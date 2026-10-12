@@ -1,0 +1,98 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  docker:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: env files holding secrets stay out of git
+        run: |
+          for f in backend/.env backend/.env.worker seal.env backend/seal.env; do
+            git check-ignore -q "$f" || { echo "$f is not gitignored"; exit 1; }
+          done
+          for f in backend/.env.example backend/.env.worker.example; do
+            if git check-ignore -q "$f"; then echo "$f is gitignored but must be committed"; exit 1; fi
+          done
+      # agents.md §5.3: the API tier cannot decrypt viewing keys. The key is also planted in the
+      # shared .env (an operator mistake) to prove api and migrate still never receive it.
+      - name: docker compose gives the seal private key to the worker only
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          printf '\nVIEWING_KEY_SEAL_PRIVATE_KEYS=planted-in-shared-env\n' >> .env
+          printf 'VIEWING_KEY_SEAL_PRIVATE_KEYS=worker-only\n' > .env.worker
+          docker compose -f docker-compose.yml config --format json \
+            | node ../.github/scripts/check-compose-env.mjs worker-only planted-in-shared-env
+      - run: docker build -f backend/Dockerfile -t shade-backend .
+      # The native scanner needs glibc and the system CA bundle; prove both work inside the image.
+      - name: scanner reaches testnet lightwalletd from the image
+        run: >-
+          docker run --rm --entrypoint node shade-backend -e
+          "import('@ledgerhq/zcash-utils').then((m) => m.getChainTip('https://testnet.zec.rocks:443'))
+          .then((h) => { if (!(h > 4000000)) process.exit(1); console.log('testnet tip', h); })"
+      - name: production config refuses to boot without secrets
+        run: |
+          if docker run --rm shade-backend; then echo "server started without config" && exit 1; fi
+
+  e2e:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7

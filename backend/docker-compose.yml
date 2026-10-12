@@ -1,0 +1,97 @@
+# Shade backend stack: Postgres 17, a one-shot migration, the API and the worker.
+#
+#   cp backend/.env.example backend/.env                 # then set APP_ORIGIN, the secrets, mail
+#   cp backend/.env.worker.example backend/.env.worker   # worker-only: the seal private key
+#   docker compose -f backend/docker-compose.yml up --build
+#
+# `npm run -s keys:seal -w @shade/backend` prints the seal keypair: its VIEWING_KEY_SEAL_PUBLIC_KEY
+# line goes in backend/.env, its VIEWING_KEY_SEAL_PRIVATE_KEYS line in backend/.env.worker.
+#
+# The image runs with NODE_ENV=production, so mail must be deliverable: MAIL_TRANSPORT=resend with
+# RESEND_API_KEY and a MAIL_FROM on a domain verified in Resend. The console transport in
+# .env.example is refused while email verification is on; AUTH_REQUIRE_EMAIL_VERIFICATION=false
+# boots it for a local trial only. Never leave an empty NODE_ENV= line in backend/.env: it would
+# replace the image's production with development.
+#
+# The API tier never holds the seal private key (agents.md §5.3: it cannot decrypt viewing keys).
+# Every backend service loads backend/.env; only the worker also loads backend/.env.worker, and
+# migrate and api get VIEWING_KEY_SEAL_PRIVATE_KEYS blanked even if it was put in backend/.env
+# by mistake (`environment:` overrides `env_file:`).
+#
+# The image is built from the repository root (see backend/Dockerfile). DATABASE_URL and
+# DATABASE_URL_UNPOOLED always point at the bundled Postgres here; POSTGRES_PASSWORD (read from
+# backend/.env, default "shade") sets its password. The API listens on http://localhost:8787.
+name: shade
+
+# Shared by every backend service. A service's own `environment:` map replaces the inherited one
+# (`<<` merges one level only), so each map merges these keys in again.
+x-backend-env: &backend-env
+  DATABASE_URL: postgres://shade:${POSTGRES_PASSWORD:-shade}@postgres:5432/shade
+  DATABASE_URL_UNPOOLED: postgres://shade:${POSTGRES_PASSWORD:-shade}@postgres:5432/shade
+
+# migrate and api: backend/.env only, with the seal private key always blanked.
+x-backend: &backend
+  build:
+    context: ..
+    dockerfile: backend/Dockerfile
+  image: shade-backend:local
+  env_file: .env
+  environment:
+    <<: *backend-env
+    VIEWING_KEY_SEAL_PRIVATE_KEYS: ""
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: shade
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shade}
+      POSTGRES_DB: shade
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shade -d shade"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["node", "src/bin/migrate.ts"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    ports:
+      - "8787:8787"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    command: ["node", "src/bin/worker.ts"]
+    # The only service that opens uploaded viewing keys: backend/.env, then backend/.env.worker
+    # (a later file wins). Its environment has no VIEWING_KEY_SEAL_PRIVATE_KEYS override.
+    env_file: [.env, .env.worker]
+    environment:
+      <<: *backend-env
+    # The worker serves no HTTP; the image's /healthz probe is for the API.
+    healthcheck:
+      disable: true
+    # Lets in-flight scans and webhook deliveries finish (the worker gives up after 30 s).
+    stop_grace_period: 40s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

@@ -1,0 +1,17 @@
+# Build context for backend/Dockerfile is the repository root. Send only what the image needs:
+# the workspace manifests and lockfile (for npm ci), backend sources and migrations.
+*
+!package.json
+!package-lock.json
+!backend/package.json
+!backend/sdk/package.json
+!frontend/package.json
+!backend/src
+!backend/migrations
+
+# Never ship local state, secrets or tests, even if they appear under an included path.
+**/node_modules
+**/.data
+**/.env
+**/.env.*
+**/*.test.ts

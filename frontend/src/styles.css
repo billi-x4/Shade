@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0e0e10;
+  --color-surface: #161618;
+  --color-surface-2: #1c1c20;
+  --color-fg: #f4f3f1;
+  --color-muted: #a7aab4;
+  --color-faint: #8d8f98;
+  /* Decorative dividers only (1.4:1). Never the only edge of a control. */
+  --color-line: #2c2c31;
+  /* Control and panel edges: >= 3.3:1 on bg, surface and surface-2 (WCAG 1.4.11). */
+  --color-line-strong: #6b6e79;
+  --color-paper: #f4f3f1;
+  --color-ink: #0e0e10;
+  --color-ok: #9dceba;
+  --color-warn: #e0c09a;
+  --color-bad: #e7b1b1;
+
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader Variable", "Iowan Old Style", Palatino, Georgia, serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+
+  --ease-curtain: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  :root {
+    --focus-ring: var(--color-paper);
+  }
+
+  html {
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  /* One focus treatment everywhere; paper surfaces flip the ring to ink. */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  :where(input, textarea, select):focus-visible {
+    outline-offset: 1px;
+  }
+
+  code,
+  kbd,
+  pre {
+    font-family: var(--font-mono);
+  }
+
+  dialog {
+    color: inherit;
+  }
+
+  dialog::backdrop {
+    background: rgb(5 5 6 / 0.78);
+  }
+}
+
+@utility on-paper {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  --focus-ring: var(--color-ink);
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility safe-bottom {
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+
+/* The curtain seam: the one orchestrated motion on the site (landing hero). */
+.seam {
+  transform-origin: top;
+  animation: seam-draw 900ms var(--ease-curtain) both;
+}
+
+.seam-reveal {
+  animation: seam-reveal 700ms var(--ease-curtain) 250ms both;
+}
+
+@keyframes seam-draw {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes seam-reveal {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+dialog[open] {
+  animation: dialog-in 160ms var(--ease-curtain);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    var(--color-surface-2) 50%,
+    var(--color-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

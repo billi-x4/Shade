@@ -1,0 +1,39 @@
+{
+  "name": "shade",
+  "private": true,
+  "type": "module",
+  "description": "Shade — the vendor layer on Zcash: private invoices, agent jars, viewing grants.",
+  "workspaces": [
+    "backend",
+    "backend/sdk",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @shade/backend\" \"npm run dev -w @shade/frontend\"",
+    "build": "npm run build -w @shade/sdk && npm run build -w @shade/frontend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:e2e": "npm run test:e2e -w @shade/frontend",
+    "db:migrate": "npm run db:migrate -w @shade/backend"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.1",
+    "concurrently": "^10.0.5",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3"
+  }
+}

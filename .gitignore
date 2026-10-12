@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+.vitest/
+.vercel/
+.tanstack/
+.data/
+*.log
+# Env files hold secrets (backend/.env, the worker-only backend/.env.worker, a redirected
+# `keys:seal` output such as seal.env). Only the *.example templates are committed.
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+playwright-report/
+test-results/
+.claude/
+.shade-scan-*.json

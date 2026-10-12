@@ -1,0 +1,31 @@
+# `vercel deploy` uploads the working tree from the repository root and does NOT read .gitignore.
+# This allowlist sends only what the frontend build needs (frontend/, the npm workspace manifests and
+# lockfile, and backend/src/contract behind the @shade/contract alias) and keeps local state and
+# secrets out: backend/.data (dev database, dev-secrets.json), backend/.env*, .claude, e2e tests.
+# Checked by frontend/src/index-html.test.ts.
+/*
+!/package.json
+!/package-lock.json
+!/tsconfig.base.json
+!/frontend
+!/backend
+/backend/*
+!/backend/package.json
+!/backend/tsconfig.json
+!/backend/sdk
+/backend/sdk/*
+!/backend/sdk/package.json
+!/backend/src
+/backend/src/*
+!/backend/src/contract
+
+# Never uploaded, even inside an allowed folder.
+**/.env
+**/.env.*
+**/*.env
+**/.data
+**/node_modules
+/frontend/dist
+/frontend/e2e
+/frontend/test-results
+/frontend/playwright-report

@@ -1,0 +1,11 @@
+{
+  "name": "Shade",
+  "short_name": "Shade",
+  "description": "Your tools spend. Your ledger should not narrate.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0e0e10",
+  "theme_color": "#0e0e10",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

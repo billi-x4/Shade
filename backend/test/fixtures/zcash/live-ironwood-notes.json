@@ -1,0 +1,24 @@
+{
+  "note": "Real Ironwood notes received on testnet by account 0 of the public BIP-39 test mnemonic ('abandon' x11 + 'about'), whose UFVK @ledgerhq/zcash-utils testDeriveKeys derives. Found 2026-10-02 by scanning from NU6.3 activation (4134000) to the tip with backend/src/zcash/scanner.ts against testnet.zec.rocks. Memo text is not recorded; memo_hash is Shade's ZIP-302 hash of what the scanner decrypted.",
+  "network": "testnet",
+  "notes": [
+    {
+      "txid": "c9b355a4e5cf3e15768880e087019c2d063d807fa2ed9d3fb4bf25392524763e",
+      "block_height": 4381253,
+      "block_hash": "000069063c1a7634ea22a49d04714868f79b2b7ae693c8eca4988d0c27e69bbd",
+      "block_time": 1790105595,
+      "pool": "ironwood",
+      "amount_zat": "10000000",
+      "memo_hash": "sha256:fe079fddb054f739dbd8cfd06eef30fd5fbf7d02779ba3aff628013d952c643d"
+    },
+    {
+      "txid": "bb6e0998ae084733dc5e4e10eb7031590e0efa7d64c9d3b329db23ef84db9e97",
+      "block_height": 4390503,
+      "block_hash": "00001748e6d42306395d97b3c9322a268abf688206f0ed1fac3d2862e6911dd3",
+      "block_time": 1790310409,
+      "pool": "ironwood",
+      "amount_zat": "10000",
+      "memo_hash": "sha256:b628ddfa2b01523fc8f14f44990a26f3de424dce06440b73096fd90a1fdf92bf"
+    }
+  ]
+}
