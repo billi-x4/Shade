@@ -1,198 +1,252 @@
 # Shade
 
-**The vendor layer on Zcash.** Create a private invoice, get a webhook when shielded ZEC lands, share or revoke a
-time-boxed receipt view, and give an AI agent a jar it can empty but not overflow.
+Shade is the vendor layer on Zcash: private invoices, payment webhooks, agent spending limits and receipt views.
 
 _Pay in the dark. Prove in the light. Keys stay yours._
 
-Shade is not a wallet. It never holds seeds or spending keys. Payers use their own shielded wallet through
-[ZIP-321](https://zips.z.cash/zip-0321) payment links. Default network is **testnet**; the asset is **ZEC**.
+Shade is not a wallet and never holds seed phrases or spending keys. Payers use their own shielded wallet through
+[ZIP-321](https://zips.z.cash/zip-0321) payment links. Testnet by default. Amounts are in ZEC.
 
-- Product requirements: [`prd.md`](prd.md)
-- Engineering context (architecture, Zcash facts, security rules, deviations from the PRD): [`agents.md`](agents.md)
-- 90-second demo script: [`docs/demo.md`](docs/demo.md)
-- TypeScript SDK: [`backend/sdk/README.md`](backend/sdk/README.md)
+## The problem
 
-## How it works
-
-```
-payer wallet ──ZIP-321──► shielded payment ─────────────► Zcash (Ironwood pool)
-                                                              │
-shade-zcash.vercel.app (SPA) ──/api,/v1──► Shade API ◄── worker ── lightwalletd (gRPC)
-                                              │            │
-                                              ▼            └── trial-decrypts with the merchant's viewing key,
-                                           Postgres            matches amount + memo hash, waits for confirmations
-                                              │
-                                              └──► signed invoice.paid webhook ──► merchant server
+```mermaid
+flowchart LR
+  Pay["Agent API calls, payroll, shop sales"] --> Public["Public chain"]
+  Public --> Seen["Anyone sees who paid whom and how much"]
+  Pay --> Shielded["Zcash shielded payment"]
+  Shielded --> Hidden["Hidden from outsiders"]
+  Shielded --> Gap["No invoices, webhooks or limits for apps"]
 ```
 
-1. A merchant creates an invoice (desk or `POST /v1/invoices`). Shade returns a pay link and a ZIP-321 URI whose memo
-   is unique to the invoice.
-2. The payer opens the pay page and pays from a shielded wallet (QR or _Open in wallet_).
-3. Shade's worker scans the chain with the merchant's viewing key (sealed so the API cannot read it), or the merchant
-   runs the same scanner on their own machine. A match with enough confirmations marks the invoice **paid** and sends a
-   signed `invoice.paid` webhook. If detection is off, the payer can paste the transaction id and the merchant confirms
-   it after checking their wallet.
-4. Grants share a receipt view for 10 minutes to 90 days; revoking stops the view and the CSV export immediately.
-5. Jars give an agent a spending limit: charges succeed until the cap, then `402 JAR_EMPTY`.
+## The solution
 
-## Repository
+```mermaid
+flowchart LR
+  App["Your app"] -->|"create invoice"| Shade
+  App -->|"pay link"| Payer["Payer's own wallet"]
+  Payer -->|"shielded ZEC"| Zcash
+  Shade -->|"finds payments with a viewing key"| Zcash
+  Shade -->|"signed invoice.paid webhook"| App
+  Agent["AI agent"] -->|"charges a jar"| Shade
+  Auditor -->|"opens a grant view"| Shade
+```
 
+A viewing key reads payments but cannot spend them. Shade seals a key uploaded under **Settings → Detection** so only
+its worker can open it, or `scan:local` keeps the key on your machine.
+
+## Features
+
+```mermaid
+flowchart LR
+  M["Merchant: desk or API"] -->|"creates"| I["Invoice"]
+  M -->|"sets a cap"| J["Jar"]
+  M -->|"shares"| G["Grant"]
+  M -->|"claims"| T["Tag: name.shade"]
+  P["Payer"] -->|"pays from own wallet"| I
+  I -->|"paid"| W["Signed webhook"]
+  W --> M
+  A["AI agent"] -->|"charges"| J
+  U["Auditor"] -->|"views receipts, CSV"| G
 ```
-frontend/      Vite + React SPA: landing, merchant desk, pay page, grant view, API docs
-backend/       Hono API, background worker, Postgres migrations, Zcash integration
-backend/sdk/   @shade/sdk — TypeScript client, webhook verification, demo scripts
-docs/          demo script
-agents.md      engineering context for humans and AI agents
-prd.md         product requirements
+
+| Feature  | What it does                                                   |
+| -------- | -------------------------------------------------------------- |
+| Invoice  | A pay page with a QR code and a ZIP-321 payment link           |
+| Webhooks | Signed `invoice.paid` events, retried for about 3 days         |
+| Jar      | A spending cap for an AI agent. The owner can kill it.         |
+| Grant    | Revocable auditor receipt view and CSV, 10 minutes to 90 days  |
+| Tag      | A `name.shade` name for a merchant's receive address           |
+| Desk     | Merchant dashboard: Invoices, Jars, Grants, Webhooks, Settings |
+
+## How a payment works
+
+```mermaid
+sequenceDiagram
+  participant M as Merchant
+  participant S as Shade
+  participant P as Payer
+  participant Z as Zcash
+  M->>S: create invoice
+  M->>P: pay link
+  P->>Z: wallet pays with the invoice memo
+  S->>Z: scan with the merchant's viewing key
+  Note over S: match amount and memo hash, wait for confirmations, mark paid
+  S->>M: signed invoice.paid webhook
 ```
+
+Default confirmations: 1 on testnet, 10 on mainnet. A scan match sets `verification: ivk_scan`. The fallbacks set
+`verification: merchant_accept`: **Confirm** (or reject) the txid (transaction id) a payer pasted, or **Record payment**
+with a txid from your wallet, the way on testnet for now ([Known issue](#known-issue-testnet-detection-after-nu7)). Open
+invoices expire or can be cancelled; a payment mined up to 60 minutes after expiry still counts.
+
+## Agent jars
+
+```mermaid
+sequenceDiagram
+  participant O as Owner
+  participant S as Shade
+  participant A as Agent
+  O->>S: create a jar (cap 0.006 ZEC) and an agent key
+  O->>A: ag_ key
+  A->>S: charge 0.002 ZEC, three times
+  S-->>A: 201 each time, remaining_zec falls to 0
+  A->>S: charge 0.002 ZEC
+  S-->>A: 402 JAR_EMPTY
+  O->>S: kill the jar
+  Note over S: later charges get 409 JAR_CLOSED
+```
+
+## For developers
+
+```mermaid
+flowchart LR
+  Code["Your server or agent"] --> SDK["@shade/sdk"]
+  SDK -->|"/v1 with a Bearer key"| Shade
+  Shade -->|"signed invoice.paid"| Hook["Your webhook endpoint"]
+  Hook --> Verify["verifyWebhook()"]
+```
+
+```ts
+import { Shade, verifyWebhook } from "@shade/sdk";
+
+const baseUrl = "http://localhost:5173"; // your Shade origin (development)
+const shade = new Shade({ apiKey: process.env.SHADE_API_KEY!, baseUrl });
+const invoice = await shade.invoices.create({ amountZec: "0.01", memo: "order_1042" });
+// Send the payer to invoice.payUrl.
+
+// Raw body, not parsed JSON. Throws if the signature is wrong or over 5 minutes old.
+const event = await verifyWebhook(rawBody, request.headers, process.env.SHADE_WEBHOOK_SECRET!);
+if (event.type === "invoice.paid") {
+  // Fulfil event.invoiceId. Deliveries can repeat: dedupe by event.id.
+}
+
+// An agent with its ag_ key: over the cap this throws ShadeError code "JAR_EMPTY".
+const agent = new Shade({ apiKey: process.env.SHADE_AGENT_KEY!, baseUrl });
+const { remainingZec } = await agent.jars.charge(jarId, { amountZec: "0.002", memo: "api:search" });
+```
+
+Endpoints:
+
+- **Invoices:** `POST /v1/invoices` · `GET /v1/invoices` · `GET /v1/invoices/:id` · `POST /v1/invoices/:id/cancel`
+- **Own scanner:** `POST /v1/invoices/:id/detections` reports a payment your own scanner found
+- **Jars:** `POST /v1/jars` · `GET /v1/jars/:id` · `POST /v1/jars/:id/charge` · `POST /v1/jars/:id/kill`
+- **Grants:** `POST /v1/grants` · `POST /v1/grants/:id/revoke`
+- **Webhooks:** `POST /v1/webhooks` · `GET /v1/webhooks` · `DELETE /v1/webhooks/:id`
+- **Tags:** `POST /v1/tags` · `GET /v1/tags/:name` (no key needed)
+
+Keys go in `Authorization: Bearer <key>` and are shown once. `sk_test_…` (testnet) and `sk_live_…` (mainnet), from
+**Settings → API keys**, call all of `/v1`. An `ag_…` key, from **Jars → Agent key**, takes its jar's network and
+can only charge and read its own jar.
+
+- `Idempotency-Key` on invoice, jar and charge creation: a retry never creates or charges twice.
+- Without the SDK, check `X-Shade-Signature-V2: t=…,v1=…`. `v1` is the hex HMAC-SHA256 of `t`, a dot and the raw
+  body, keyed with the whole `whsec_…` secret. Reject an old `t`. `X-Shade-Signature` is the older body-only form.
+- The SDK (`backend/sdk`, Node 20+, no runtime dependencies) is not on npm yet: `npm run build -w @shade/sdk`, or
+  `npm pack -w @shade/sdk` and install the tarball. Shade is self-hosted, so always pass `baseUrl`.
+- Reference: [backend/sdk/README.md](backend/sdk/README.md) and `/docs` in the web app (webhook checks in Node,
+  Python and Go).
 
 ## Run it locally
 
-Requirements: **Node 24+** (`.nvmrc`; older versions cannot run the TypeScript sources) and npm. No Postgres and no Zcash node
-are needed: the backend uses an embedded Postgres (PGlite) under `backend/.data/` and public testnet light servers.
+You need **Node 24+** (`.nvmrc`) and npm, but no Postgres or Zcash node.
 
 ```bash
 npm install
 npm run dev
 ```
 
-- Web app: <http://localhost:5173> (Vite proxies `/api` and `/v1` to the backend, so everything is same-origin)
-- API: <http://localhost:8787> (`/healthz`, `/readyz`)
+- <http://localhost:5173> is the web app. It proxies `/api` and `/v1` to the API on <http://localhost:8787>
+  (`/healthz`, `/readyz`), which runs the worker (payment scanner, webhook retries) and reads public testnet light
+  servers.
+- Data: embedded Postgres (PGlite) and generated dev secrets in `backend/.data/`. Emails print to the backend console.
+- A `PORT` set in your shell moves the API. Unset it, or set `VITE_API_PROXY_TARGET` to the API's address.
 
-On first boot the backend generates development secrets into `backend/.data/dev-secrets.json`. Email is printed to the
-backend console (verification links included), and the worker runs inside the server process. If your shell exports
-`PORT`, the backend listens there instead of 8787; unset it, or point the web app at it with `VITE_API_PROXY_TARGET`.
+### Try the full flow
 
-### Try the loop in ten minutes
-
-1. Create an account at <http://localhost:5173/signup> and sign in.
-2. **Settings → Receive addresses & network:** paste a testnet Unified Address. Without a wallet, use the public test
-   address below. It belongs to the BIP-39 test mnemonic (`abandon … about`), so **anyone can spend what it holds:
-   never send real funds to it**. It is only good for creating invoices and looking at pay pages.
+1. Sign up at <http://localhost:5173/signup>, then sign in.
+2. **Settings → Receive addresses & network:** paste a testnet Unified Address (`utest1…`). Without a wallet, use the
+   public test address below to create invoices and view pay pages. It belongs to the BIP-39 test mnemonic
+   (`abandon … about`), so **anyone can spend what it holds: never send real funds to it**.
 
    ```text
    utest16gxxqp2n35ze6p2qzlxx2sd0e9s6favez0spnxe6f8useeew37hkm5zrk90373268u70e3l6en9dav8ytzp2q5lnj4gvjcprkg63xcxc
    ```
 
-   To pay for real, install [Zingo](https://zingolabs.org) on testnet, take free TAZ from the
-   [faucet](https://zcashfaucet.jinolabs.xyz), and use your own address (or upload that wallet's full viewing key under
-   **Settings → Detection** so Shade finds payments by itself).
+   To pay for real, use your own address in [Zingo](https://zingolabs.org) on testnet, with free test ZEC (TAZ) from
+   the [faucet](https://zcashfaucet.jinolabs.xyz).
 
-3. **Invoices → New invoice** → **Open pay page**: the QR, **Open in wallet**, and **Pay by hand** (address, amount
-   and the exact memo) for wallets that cannot open the link.
-4. **Webhooks:** add `SHADE_WEBHOOK_ALLOW_PRIVATE=true` to `backend/.env` (development only) and restart, run
-   `npm run demo:receiver -w @shade/backend` with the secret Shade shows once (`SHADE_WEBHOOK_SECRET`, see below),
-   register `http://127.0.0.1:8790/` and press **Send test**.
-5. A payment that detection cannot see (no viewing key, or the scanner issue below): **Record payment** on the
-   invoice row with the transaction id from your wallet marks it paid and fires `invoice.paid`
-   (`verification: merchant_accept`).
-6. **Grants → New grant**, open the view link in a private window, download the CSV, then **Revoke**.
-7. **Jars → New jar** (cap `0.006`), **Agent key**, then
-   `npm run demo:agent -w @shade/backend -- --jar <jar_id> --times 4` with `SHADE_AGENT_KEY` set: three charges, then
-   `402 JAR_EMPTY`.
+3. **Invoices → New invoice → Open pay page:** QR code, **Open in wallet** and **Pay by hand** (address, amount, exact
+   memo).
+4. **Webhooks:** add `SHADE_WEBHOOK_ALLOW_PRIVATE=true` to `backend/.env` (development only) and restart. Add
+   `http://127.0.0.1:8790/`, put its `whsec_…` secret (shown once) in `SHADE_WEBHOOK_SECRET` and run
+   `npm run demo:receiver -w @shade/backend`. **Send test** makes the receiver print `webhook.test`.
+5. **Pay** from your wallet. When it shows the payment confirmed, check the amount and memo there, then press **Record
+   payment** on the invoice row and paste the txid. The receiver prints `invoice.paid`.
+6. **Grants → New grant:** open the view link in a private window and download the CSV. **Revoke** ends both.
+7. **Jars → New jar** (cap `0.006`), then **Agent key**. Put the `ag_…` key in `SHADE_AGENT_KEY` and run
+   `npm run demo:agent -w @shade/backend -- --jar <jar_id> --times 4` (the jar id is on its card): three charges,
+   then `402 JAR_EMPTY`.
 
-On Windows the `VAR=value command` form below does not work in cmd or PowerShell. Put the variables in
-`backend/.env` (the demo scripts and `scan:local` load it) or set them first (PowerShell: `$env:SHADE_AGENT_KEY = "ag_…"`).
+On Windows, set variables in `backend/.env` (the scripts load it) or in PowerShell: `$env:SHADE_AGENT_KEY = "ag_…"`.
 
 ### Useful commands
 
 ```bash
-npm run typecheck          # all workspaces
-npm run lint
-npm test                   # backend, sdk and frontend unit/integration tests
-npm run build              # SDK + frontend production build
-npm run test:e2e           # Playwright (first: npx playwright install chromium; stop npm run dev, see below)
-
-npm run demo:receiver -w @shade/backend                         # local webhook receiver (SHADE_WEBHOOK_SECRET=whsec_…)
-SHADE_AGENT_KEY=ag_… npm run demo:agent -w @shade/backend -- --jar <jar_id> --times 4
-npm run scan:local -w @shade/backend -- --network testnet       # scan on your own machine (SHADE_API_KEY, SHADE_UFVK)
-npm run -s keys:seal -w @shade/backend                          # X25519 keypair for sealing viewing keys
+npm run typecheck && npm run lint && npm run build   # build: SDK and frontend
+npm test           # fake chain, no network; set TEST_DATABASE_URL to add the race tests on Postgres
+npm run test:e2e   # Playwright (first run: npx playwright install chromium)
+npm run scan:local -w @shade/backend -- --network testnet   # scan on your machine (SHADE_API_KEY, SHADE_UFVK)
+SHADE_LIVE_TESTS=1 npx vitest run --project backend test/zcash/live   # live testnet checks
 ```
 
-The demo scripts and `scan:local` read their keys from the environment (or `backend/.env`) and talk to
-`SHADE_API_URL`, default <http://localhost:5173>. For webhooks to reach the local receiver on
-`http://127.0.0.1:8790/`, set `SHADE_WEBHOOK_ALLOW_PRIVATE=true` in `backend/.env` (development only). Outside CI,
-`npm run test:e2e` reuses servers already listening on :8787 and :5173, so with `npm run dev` running it writes to the
-development database; stop it first to get the isolated in-memory test backend.
-
-Chain-touching tests use a deterministic fake chain. Live checks against testnet light servers run with
-`SHADE_LIVE_TESTS=1 npx vitest run --project backend test/zcash/live`. Race tests run against real Postgres when
-`TEST_DATABASE_URL` is set (CI provides one).
-
-## API in one minute
-
-```ts
-import { Shade } from "@shade/sdk";
-
-// baseUrl: your Shade's origin (http://localhost:5173 in development)
-const shade = new Shade({ apiKey: process.env.SHADE_API_KEY!, baseUrl: "http://localhost:5173" });
-const inv = await shade.invoices.create({ amountZec: "0.01", memo: "order_1042" });
-// send the payer to inv.payUrl; fulfil on the signed invoice.paid webhook
-```
-
-The SDK lives in `backend/sdk` and is not on npm yet: `npm run build -w @shade/sdk`, or `npm pack -w @shade/sdk` and
-install the tarball. Other languages call the JSON API directly; `/docs` has webhook verification in Node, Python and
-Go.
-
-| Endpoint                                                                                     | Purpose                                                                    |
-| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `POST /v1/invoices` · `GET /v1/invoices[/:id]` · `POST /v1/invoices/:id/cancel`              | invoices                                                                   |
-| `POST /v1/invoices/:id/detections`                                                           | report a payment found by your own scanner                                 |
-| `POST /v1/jars` · `GET /v1/jars/:id` · `POST /v1/jars/:id/charge` · `POST /v1/jars/:id/kill` | agent jars (`402 JAR_EMPTY` at the cap; an agent key can read its own jar) |
-| `POST /v1/grants` · `POST /v1/grants/:id/revoke`                                             | receipt views                                                              |
-| `POST /v1/webhooks` · `GET /v1/webhooks` · `DELETE /v1/webhooks/:id`                         | signed webhook endpoints (`X-Shade-Signature`, `X-Shade-Signature-V2`)     |
-| `POST /v1/tags` · `GET /v1/tags/:name`                                                       | `name.shade` handles                                                       |
-
-Authentication: `Authorization: Bearer sk_test_…` (testnet) or `sk_live_…` (mainnet); agent keys `ag_…` may only charge
-their jar and read it. `Idempotency-Key` is honoured on invoice, jar and charge creation. Full reference: `/docs` in the web app.
+- Stop `npm run dev` before `npm run test:e2e`: outside CI the tests reuse servers on :8787 and :5173 and write to
+  your dev database.
+- `demo:agent` and `scan:local` call `SHADE_API_URL` (default `http://localhost:5173`). Set it to use a deployed Shade.
 
 ## Deploy
 
-Reference setup, all driven from the CLIs at the repository root (step by step in `agents.md` §12):
+```mermaid
+flowchart LR
+  Browser --> Vercel["Vercel: static site"]
+  Vercel -->|"/api and /v1 plus x-shade-edge"| API["Railway: API"]
+  API --> DB[("Postgres")]
+  Worker["Railway: worker"] --> DB
+  API --> LWD["Zcash light servers"]
+  Worker --> LWD
+  API -->|"account email"| Resend
+  API -->|"signed webhooks"| Hooks["Webhook endpoints"]
+  Worker -->|"signed webhooks"| Hooks
+```
 
-| Piece          | Where                                 | Notes                                                                         |
-| -------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
-| Website        | **Vercel** (project root `frontend/`) | static build; proxies `/api/*` and `/v1/*` to the API                         |
-| API and worker | **Railway**, two services, one image  | `backend/Dockerfile`; migrations run as the pre-deploy command                |
-| Database       | **Neon** Postgres 17                  | pooled `DATABASE_URL` + direct `DATABASE_URL_UNPOOLED`, `sslmode=verify-full` |
-| Email          | **Resend**                            | a verified sending domain; `MAIL_FROM` on it                                  |
+- **Vercel** serves `frontend/` (root directory, files outside it included, Node 24.x). Point both `api.example.com`
+  routes in `frontend/vercel.json` at the API.
+- **Railway** runs `backend/Dockerfile` as the API (healthcheck `/healthz`) and the worker
+  (`node /app/backend/src/bin/worker.ts`). Migrate first: pre-deploy command `node /app/backend/src/bin/migrate.ts`
+  or `npm run db:migrate`. On Postgres, neither starts while a migration is pending.
+- **Postgres 15+** (reference: Neon; Supabase: [AGENTS.md](AGENTS.md) §12.1): `DATABASE_URL` pooled,
+  `DATABASE_URL_UNPOOLED` direct, not a transaction-mode pooler.
+- Set `NODE_ENV=production` (the Docker image does; `npm start` does not), or the backend runs in development mode
+  (no email verification, generated secrets). Production refuses to start without `DATABASE_URL`, `APP_ORIGIN`,
+  `BETTER_AUTH_SECRET`, `SHADE_ENCRYPTION_KEY` and, with email verification on (the default), `MAIL_TRANSPORT=resend`,
+  `RESEND_API_KEY` and `MAIL_FROM`. Use a `MAIL_FROM` domain verified in Resend.
+- Give Vercel's `SHADE_EDGE_SECRET` and the API's `EDGE_SHARED_SECRET` one value, Vercel first (then redeploy it):
+  once the API has it, `/api/*` without `x-shade-edge` gets 403.
+- On Railway, the API also needs `TRUST_PROXY_DIRECT=x-real-ip`, and `TRUST_PROXY=none` until the client-IP check in
+  [AGENTS.md](AGENTS.md) §12.8 passes.
+- Hosted detection (optional) needs a keypair from `npm run -s keys:seal -w @shade/backend`: public key on the API,
+  private key (it opens every uploaded viewing key) on the worker only.
+- One machine: copy `backend/.env.example` to `backend/.env` and `backend/.env.worker.example` to
+  `backend/.env.worker`, then run `docker compose -f backend/docker-compose.yml up --build` (Postgres, migrations,
+  API, worker). Add TLS and backups yourself.
+- Full steps and checklist: [AGENTS.md](AGENTS.md) §12 and §10.
 
-- **Install the CLIs** (Node 24): `npm i -g @railway/cli vercel neon resend-cli`, then `railway login`,
-  `vercel login`, `neon login` and `resend login` (with a key from the Resend dashboard).
-- **Railway has no committed config file:** new services cannot use `railway.json` any more. Both services are set up
-  with one `railway environment edit` patch (Dockerfile path, the worker's start command, the API's healthcheck and
-  pre-deploy migrations); see `agents.md` §12.5.
-- **Secrets stay out of uploads and history.** `railway up` skips `.gitignore`d files; `vercel deploy` does not read
-  `.gitignore`, so the root `.vercelignore` allowlists only what the frontend build needs. Values go into
-  `railway variable set … --stdin` and `vercel env add …` through pipes, never on a command line.
-- **Production refuses to start** without `DATABASE_URL`, `APP_ORIGIN`, `BETTER_AUTH_SECRET`, `SHADE_ENCRYPTION_KEY`
-  and a mail transport that can deliver verification email (`MAIL_TRANSPORT=resend`, `RESEND_API_KEY`, `MAIL_FROM` on
-  a domain verified in Resend). The Docker image sets `NODE_ENV=production`; outside it, set it yourself.
-- **Viewing-key seal keys** (hosted detection only): `npm run -s keys:seal -w @shade/backend` prints the pair. The
-  public key goes on the API service, the private key on the worker service only, because it opens every uploaded
-  viewing key.
-- **Client IPs behind Vercel → Railway:** Railway's edge overwrites `X-Forwarded-For` and `X-Real-IP` with the
-  connecting address (Vercel's, for proxied requests). The API service uses `TRUST_PROXY_DIRECT=x-real-ip` (right for
-  direct `/v1` callers) and `EDGE_SHARED_SECRET` (the value Vercel sends as `x-shade-edge` from its
-  `SHADE_EDGE_SECRET` variable). `TRUST_PROXY=x-vercel-forwarded-for` is switched on only after a live check shows
-  Vercel sends that header and overwrites a client's value (`agents.md` §12.8); until then proxied users share a
-  per-IP bucket per Vercel address. Set the Vercel variable and redeploy the frontend first: once the API has the
-  secret, `/api/*` without the header is 403.
-- **One machine instead:** `backend/docker-compose.yml` runs Postgres, a one-shot migration, the API and the worker
-  (`docker compose -f backend/docker-compose.yml up --build` after creating `backend/.env` and `backend/.env.worker`
-  from their `.example` files); add a TLS proxy and backups yourself.
+## Known issue: testnet detection after NU7
 
-See `agents.md` §10 for the full checklist.
-
-## Known issue: testnet detection after NU7 (October 2026)
-
-Testnet activated NU7 at height 4,465,026 on 2026-10-04. The scanner library Shade pins (`@ledgerhq/zcash-utils`
-2.5.0, still the newest release on 2026-10-06) rejects every transaction made since then ("invalid consensus branch id
-0x77190ad9"). Scanning blocks still works, but as soon as a payment to the viewing key arrives, the scan fails and
-Settings → Detection says the scanner needs an update. Shade fails closed: nothing is marked paid by mistake. Until a
-new scanner release is out and re-verified with a real payment, confirm testnet payments with **Record payment** or
-the payer's pasted txid. Mainnet detection is unaffected until mainnet NU7 (planned for about 2026-11-05).
+Testnet turned on the NU7 network upgrade at height 4,465,026 (2026-10-04). Shade's pinned scanner,
+`@ledgerhq/zcash-utils` 2.5.0 (newest release on 2026-10-06), cannot read NU7 transactions: hosted detection and
+`scan:local` fail when a payment arrives (**Settings → Detection** shows the error; nothing is marked paid by mistake).
+Use **Record payment** or **Confirm** until a new release passes a real payment test. Mainnet NU7 (about 2026-11-05)
+breaks the same way unless the scanner is updated first.
 
 ## Honest limits
 
@@ -201,7 +255,17 @@ the payer's pasted txid. Mainnet detection is unaffected until mainnet NU7 (plan
 - Hosted detection needs a full viewing key, which also reveals outgoing payments. Use a receive-only account, or run
   `scan:local` on your own machine.
 - The public light server Shade asks can see which transactions Shade looks up. Run your own for mainnet.
-- A pasted transaction id is never settlement: the invoice stays _unverified_ until a scan matches it or the merchant
-  confirms it.
-- Payments use Zcash's shielded pool today. When Zcash upgrades keys, Shade follows. Shade does not claim to be
-  quantum-safe.
+- A merchant's pay pages all show one address, so anyone who compares two can link them.
+- A txid the payer pastes never marks an invoice paid. The invoice stays `paid_unverified` until a scan matches it or
+  the merchant confirms it.
+- **Confirm** and **Record payment** check that the transaction is shielded, newer than the invoice and mined. Shade
+  cannot see its amount or memo: check both in your wallet first.
+- Moving ZEC between Zcash pools reveals the amount moved.
+- Paid is final, even if the chain later reorganizes.
+- Payments use Zcash's shielded pool today. When Zcash upgrades keys, Shade follows. Shade makes no quantum-safe claim.
+
+## Repository and docs
+
+`frontend/`: Vite + React web app. `backend/`: Hono API, worker, Postgres migrations and Zcash code. Docs:
+[AGENTS.md](AGENTS.md) (engineering guide), [backend/sdk/README.md](backend/sdk/README.md) (SDK),
+[docs/demo.md](docs/demo.md) (the 90-second demo script) and [prd.md](prd.md) (product requirements).
