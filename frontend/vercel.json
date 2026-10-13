@@ -42,7 +42,7 @@
     },
     {
       "src": "/api/(.*)",
-      "dest": "https://api.example.com/api/$1",
+      "dest": "https://api-production-0190f.up.railway.app/api/$1",
       "transforms": [
         {
           "type": "request.headers",
@@ -55,7 +55,7 @@
     },
     {
       "src": "/v1/(.*)",
-      "dest": "https://api.example.com/v1/$1",
+      "dest": "https://api-production-0190f.up.railway.app/v1/$1",
       "transforms": [
         {
           "type": "request.headers",
