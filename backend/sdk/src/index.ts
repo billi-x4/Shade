@@ -1,5 +1,5 @@
 /**
- * @shade/sdk: TypeScript client for the Shade API (private Zcash invoices, agent jars, viewing grants,
+ * shade-zcash-sdk: TypeScript client for the Shade API (private Zcash invoices, agent jars, viewing grants,
  * webhooks, tags). Zero runtime dependencies; runs on Node ≥ 20, browsers and edge runtimes.
  *
  *   const shade = new Shade({ apiKey: process.env.SHADE_API_KEY! });

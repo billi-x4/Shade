@@ -100,14 +100,14 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  Code["Your server or agent"] --> SDK["@shade/sdk"]
+  Code["Your server or agent"] --> SDK["shade-zcash-sdk"]
   SDK -->|"/v1 with a Bearer key"| Shade
   Shade -->|"signed invoice.paid"| Hook["Your webhook endpoint"]
   Hook --> Verify["verifyWebhook()"]
 ```
 
 ```ts
-import { Shade, verifyWebhook } from "@shade/sdk";
+import { Shade, verifyWebhook } from "shade-zcash-sdk";
 
 const baseUrl = "http://localhost:5173"; // your Shade origin (development)
 const shade = new Shade({ apiKey: process.env.SHADE_API_KEY!, baseUrl });
@@ -141,8 +141,8 @@ can only charge and read its own jar.
 - `Idempotency-Key` on invoice, jar and charge creation: a retry never creates or charges twice.
 - Without the SDK, check `X-Shade-Signature-V2: t=…,v1=…`. `v1` is the hex HMAC-SHA256 of `t`, a dot and the raw
   body, keyed with the whole `whsec_…` secret. Reject an old `t`. `X-Shade-Signature` is the older body-only form.
-- The SDK (`backend/sdk`, Node 20+, no runtime dependencies) is not on npm yet: `npm run build -w @shade/sdk`, or
-  `npm pack -w @shade/sdk` and install the tarball. Shade is self-hosted, so always pass `baseUrl`.
+- Install the SDK with `npm install shade-zcash-sdk` (Node 20+, no runtime dependencies; source in `backend/sdk`).
+  Shade is self-hosted, so always pass `baseUrl`.
 - Reference: [backend/sdk/README.md](backend/sdk/README.md) and `/docs` in the web app (webhook checks in Node,
   Python and Go).
 

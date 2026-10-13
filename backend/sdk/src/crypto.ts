@@ -8,7 +8,7 @@ function webCrypto(): WebCrypto {
   const c = globalThis.crypto as WebCrypto | undefined;
   if (c === undefined || c.subtle === undefined) {
     throw new Error(
-      "@shade/sdk needs WebCrypto (globalThis.crypto.subtle), available in Node 20+ and modern runtimes",
+      "shade-zcash-sdk needs WebCrypto (globalThis.crypto.subtle), available in Node 20+ and modern runtimes",
     );
   }
   return c;

@@ -41,9 +41,9 @@ Read this section before writing code.
 
 ### Suggested repo
 
-- Planned: `apps/web` (Next.js site), `apps/api` (Node: invoices, webhooks, grants), `packages/sdk` (`@shade/sdk`),
+- Planned: `apps/web` (Next.js site), `apps/api` (Node: invoices, webhooks, grants), `packages/sdk` (`shade-zcash-sdk`),
   `packages/zip321` (payment URI helpers), `packages/agent` (jar + MCP-shaped tools), `docs/demo.md` (90s script).
-- Built: `frontend/` (Vite SPA), `backend/` (Hono API and worker), `backend/sdk/` (`@shade/sdk`). See
+- Built: `frontend/` (Vite SPA), `backend/` (Hono API and worker), `backend/sdk/` (`shade-zcash-sdk`). See
   [AGENTS.md](AGENTS.md) §4.1.
 
 ### Stack (v0)

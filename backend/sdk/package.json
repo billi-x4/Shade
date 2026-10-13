@@ -1,8 +1,18 @@
 {
-  "name": "@shade/sdk",
+  "name": "shade-zcash-sdk",
   "version": "0.1.0",
   "description": "TypeScript client for the Shade API: invoices, jars, grants, webhooks, tags.",
   "license": "MIT",
+  "author": "Billi (https://github.com/billi-x4)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/billi-x4/Shade.git",
+    "directory": "backend/sdk"
+  },
+  "homepage": "https://github.com/billi-x4/Shade/tree/main/backend/sdk#readme",
+  "bugs": {
+    "url": "https://github.com/billi-x4/Shade/issues"
+  },
   "type": "module",
   "keywords": [
     "shade",

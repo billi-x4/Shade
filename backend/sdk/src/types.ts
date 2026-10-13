@@ -1,5 +1,5 @@
 /**
- * Public camelCase types returned by @shade/sdk. Amounts are decimal ZEC strings (never floats), times are
+ * Public camelCase types returned by shade-zcash-sdk. Amounts are decimal ZEC strings (never floats), times are
  * ISO 8601 strings, txids are lowercase display-order hex. The wire API itself is snake_case.
  */
 

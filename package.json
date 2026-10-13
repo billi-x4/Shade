@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @shade/backend\" \"npm run dev -w @shade/frontend\"",
-    "build": "npm run build -w @shade/sdk && npm run build -w @shade/frontend",
+    "build": "npm run build -w shade-zcash-sdk && npm run build -w @shade/frontend",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write .",

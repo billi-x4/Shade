@@ -1,5 +1,5 @@
 /**
- * The real @shade/sdk against the real app (fetch = app.request): the PRD §9 calls, with every
+ * The real shade-zcash-sdk against the real app (fetch = app.request): the PRD §9 calls, with every
  * camelCase result compared to a mechanical camelCase conversion of the wire body the server sent,
  * so a field the SDK drops or renames, or one the server adds, fails here.
  */

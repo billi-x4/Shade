@@ -19,7 +19,7 @@ spending keys; payers use their own shielded wallet (Zingo, Zodl, …) through Z
 
 - A working pay loop on Zcash testnet: create invoice → shielded pay → webhook `invoice.paid` → viewing grant → revoke →
   agent jar empty fails.
-- One real shielded testnet payment detected. `@shade/sdk` with the PRD §16 calls. A README a stranger can run.
+- One real shielded testnet payment detected. `shade-zcash-sdk` with the PRD §16 calls. A README a stranger can run.
 - Honesty first: _a demo that lies about "on-chain" is a failed build_ (PRD §0.8).
 
 ### 1.2 The four objects (PRD §4)
@@ -103,6 +103,7 @@ auditor sees receipts and downloads a CSV. After revoke the view shows a revoked
 | §9 `sk_live_`/`ag_` keys (no issuing)   | `/api/desk/keys`: list, issue (fresh session, 10/h), revoke  | Shown once (§5.4); an agent key binds to one open jar        |
 | §0.3 "mainnet is a checkbox"            | Network switch; mainnet: fresh session + `SHADE_NETWORKS`    | The checkbox. Disabled network ⇒ 403 `NETWORK_DISABLED`      |
 | §8.1 webhook body                       | Adds `id`, `created_at`, `network`, `verification` (§4.9)    | Dedupe by `id`; `verification` says how it was paid          |
+| §16 `@shade/sdk`                        | Published on npm as `shade-zcash-sdk`                        | The npm name `shade` belongs to someone else                 |
 | Not in the PRD                          | `Idempotency-Key` on invoice, jar, charge `POST`s (§4.10)    | Agent retries must not charge a jar twice (§6.2)             |
 
 ## 3. Zcash facts Shade depends on
@@ -208,7 +209,7 @@ backend/           @shade/backend: Hono API, worker, migrations, Zcash integrati
   src/worker/      detector, promotion, outbox drainer, sweeper; matching (shared with scan:local), local scan, repo
   src/bin/         server, worker, migrate, scan-local, gen-seal-key entry points
   test/            integration + HTTP contract tests, fixtures, support (harness, fake chain, test db)
-  sdk/             @shade/sdk: public TypeScript client, webhook verification, demo scripts
+  sdk/             shade-zcash-sdk: public TypeScript client, webhook verification, demo scripts
 docs/demo.md       the 90-second demo script
 AGENTS.md, prd.md, README.md
 ```
@@ -1142,7 +1143,7 @@ version in the lockfile today.
 - **Frontend:** `react`/`react-dom` 19; `@tanstack/react-router` (file routes); `@tanstack/react-query` 5 (all server
   state); `qrcode` (QR of the ZIP-321 URI, `lib/qr.ts`); `lucide-react` (icons); `clsx` and `tailwind-merge` (`cn()` in
   `lib/cn.ts`: conditional classes, Tailwind conflicts); `@fontsource-variable/*` (self-hosted Figtree and Newsreader).
-- `@shade/sdk` has no runtime dependencies (`fetch`, WebCrypto). Resend's HTTP API is called with `fetch` and
+- `shade-zcash-sdk` has no runtime dependencies (`fetch`, WebCrypto). Resend's HTTP API is called with `fetch` and
   lightwalletd over `node:http2`: no client libraries.
 
 ### 13.2 Toolchain (devDependencies)

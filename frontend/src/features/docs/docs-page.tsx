@@ -123,9 +123,8 @@ export function DocsPage() {
               </li>
             </ul>
             <p className="text-muted">
-              With the TypeScript SDK (camelCase in, camelCase out). It lives in this repository
-              under <C>backend/sdk</C>: build it with <C>npm run build -w @shade/sdk</C>, or{" "}
-              <C>npm pack</C> it into your project.
+              With the TypeScript SDK (camelCase in, camelCase out). Install it with{" "}
+              <C>npm install shade-zcash-sdk</C>.
             </p>
             <Code label="SDK example">{SDK_EXAMPLE(origin)}</Code>
           </Section>

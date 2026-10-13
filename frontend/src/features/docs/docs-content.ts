@@ -203,7 +203,7 @@ export const ENDPOINTS: Endpoint[] = [
   },
 ];
 
-export const SDK_EXAMPLE = (origin: string) => `import { Shade } from "@shade/sdk";
+export const SDK_EXAMPLE = (origin: string) => `import { Shade } from "shade-zcash-sdk";
 
 const shade = new Shade({ apiKey: process.env.SHADE_API_KEY!, baseUrl: "${origin}" });
 const inv = await shade.invoices.create({ amountZec: "0.01", memo: "demo" });
@@ -253,7 +253,7 @@ export const WEBHOOK_BODY = `{
   "verification": "ivk_scan"
 }`;
 
-export const WEBHOOK_VERIFY_SDK = `import { verifyWebhook } from "@shade/sdk";
+export const WEBHOOK_VERIFY_SDK = `import { verifyWebhook } from "shade-zcash-sdk";
 
 // rawBody: the exact bytes Shade sent. Throws WebhookVerificationError when the signature is wrong or stale.
 const event = await verifyWebhook(rawBody, request.headers, process.env.SHADE_WEBHOOK_SECRET);`;

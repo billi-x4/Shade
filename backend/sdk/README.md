@@ -1,6 +1,6 @@
-# @shade/sdk
+# shade-zcash-sdk
 
-TypeScript client for the [Shade](../../README.md) `/v1` API (private Zcash payments), for servers and agent runtimes:
+TypeScript client for the [Shade](https://github.com/billi-x4/Shade/blob/main/README.md) `/v1` API (private Zcash payments), for servers and agent runtimes:
 invoices with a pay page (`payUrl`) and `zcash:` URI (`zip321`), signed `invoice.paid` webhooks, AI agent spending
 caps (`jars`), auditor receipt links (`grants`) and `name.shade` handles for your receive address (`tags`).
 
@@ -10,8 +10,12 @@ are ISO 8601 strings.
 
 ## Install
 
-An npm workspace here: `npm run build -w @shade/sdk` writes `backend/sdk/dist` (ESM + `.d.ts`). Other workspaces depend
-on `"@shade/sdk": "*"`; elsewhere, `npm install` the tarball from `npm pack -w @shade/sdk`.
+```bash
+npm install shade-zcash-sdk
+```
+
+Inside the Shade repository it is the npm workspace `backend/sdk`: `npm run build -w shade-zcash-sdk` writes
+`backend/sdk/dist` (ESM + `.d.ts`).
 
 ## Quick start
 
@@ -21,7 +25,7 @@ on `"@shade/sdk": "*"`; elsewhere, `npm install` the tarball from `npm pack -w @
 3. Call Shade from your server:
 
 ```ts
-import { Shade } from "@shade/sdk";
+import { Shade } from "shade-zcash-sdk";
 
 const shade = new Shade({
   apiKey: process.env.SHADE_API_KEY!, // sk_test_… or sk_live_…
@@ -71,7 +75,7 @@ sequenceDiagram
 - **Testnet limit (verified 2026-10-06):** since NU7 reached testnet (2026-10-04), the scanner (hosted and
   `scan:local`) cannot read new testnet payments. Settle them in the desk: **Confirm** a txid the payer pasted, or
   **Record payment** with the txid from your wallet (`verification: "merchant_accept"`). Mainnet hits this at its NU7
-  (planned for about 2026-11-05) unless Shade updates its scanner first ([AGENTS.md](../../AGENTS.md)).
+  (planned for about 2026-11-05) unless Shade updates its scanner first ([AGENTS.md](https://github.com/billi-x4/Shade/blob/main/AGENTS.md)).
 
 ## Methods
 
@@ -148,7 +152,7 @@ sequenceDiagram
 A non-2xx answer, or none, throws a `ShadeError`:
 
 ```ts
-import { ShadeError } from "@shade/sdk";
+import { ShadeError } from "shade-zcash-sdk";
 
 try {
   const charge = await shade.jars.charge(jarId, { amountZec: "0.002", memo: "api:search" });
@@ -263,7 +267,7 @@ Node's `req.headers`.
 
 ```ts
 import { createServer } from "node:http";
-import { verifyWebhook, WebhookVerificationError } from "@shade/sdk";
+import { verifyWebhook, WebhookVerificationError } from "shade-zcash-sdk";
 
 createServer(async (req, res) => {
   const chunks: Buffer[] = [];
@@ -346,10 +350,10 @@ invoice.paid inv_… 0.01 verification=ivk_scan
 ```bash
 npx vitest run --project sdk                   # unit tests (fake fetch) and the example scripts on loopback
 npx tsc -p backend/sdk/tsconfig.json --noEmit  # type check
-npm run build -w @shade/sdk                    # build dist/
+npm run build -w shade-zcash-sdk                    # build dist/
 ```
 
 The SDK imports nothing from `backend/`. When `backend/src/contract` changes, update `src/wire.ts`, `src/types.ts` and
 `src/mappers.ts`; `backend/test/sdk-contract.test.ts` (the real SDK against the real app) catches drift.
 
-See also [AGENTS.md](../../AGENTS.md) and [docs/demo.md](../../docs/demo.md) (the demo script).
+See also [AGENTS.md](https://github.com/billi-x4/Shade/blob/main/AGENTS.md) and [docs/demo.md](https://github.com/billi-x4/Shade/blob/main/docs/demo.md) (the demo script).
