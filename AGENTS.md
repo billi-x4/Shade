@@ -730,6 +730,10 @@ Rules for agents:
 - The wire contract is `backend/src/contract`. Change it deliberately and update backend, frontend, SDK and docs
   together.
 - Every new dependency needs a reason in the PR/commit message.
+- **SDK releases** (npm `shade-zcash-sdk`, account `billix4`, 2FA required): bump `version` in
+  `backend/sdk/package.json` and `backend/sdk/src/version.ts` together (a test keeps them equal), then
+  `npm publish -w shade-zcash-sdk` (`prepack` builds `dist`). npm offers browser 2FA approval only in an interactive
+  terminal. A new version shows as `0.0.0-stage` for a few minutes while npm processes it.
 - Behavior changes need tests. Chain-touching tests use the fake chain/scanner; live tests run only with
   `SHADE_LIVE_TESTS=1`.
 - Commit prefixes (PRD where they fit): `inv: …`, `jar: …`, `grant: …`, `pay: …`, plus `chore:`, `docs:`, `test:`,
@@ -874,6 +878,12 @@ services from `backend/Dockerfile`), **Neon** (Postgres), **Resend** (mail), dri
 `railway`, `neon`, `resend`) at the repository root. CLI facts checked against docs and sources on 2026-10-06
 (`@railway/cli` 5.63.3, `vercel` 62.4.0, `neon` 8.0.11, `resend-cli` 2.23.0); re-check before relying on a flag.
 
+**Live deploy** (2026-10-13): <https://shade-zcash.vercel.app> (Vercel project `shade-zcash`); Railway project
+`shade` with `api` (`https://api-production-0190f.up.railway.app`) and `worker`, both built from GitHub
+`billi-x4/Shade` branch `main` in `asia-southeast1-eqsg3a`; Supabase Postgres in ap-southeast-1 (§12.1). Mail is
+`console` with `AUTH_REQUIRE_EMAIL_VERIFICATION=false` until Resend is set up (§12.4); `TRUST_PROXY=none` until the
+§12.8 check runs.
+
 ```mermaid
 flowchart LR
     U[Browser] --> V["Vercel: static SPA"]
@@ -1015,8 +1025,16 @@ logged, so verify before sign-ups matter.
 ### 12.5 Railway (API and worker)
 
 Two services, `api` and `worker`, in one project, built from `backend/Dockerfile` with the repository root as context
-and deployed from the local tree with `railway up`. Plan: Hobby (two always-on processes; Free plan limits do not fit).
-Region: `us-east4-eqdc4a`, next to Neon aws-us-east-1.
+and deployed from the local tree with `railway up`, or built from GitHub. Plan: Hobby (two always-on processes; Free
+plan limits do not fit). Region: next to the database (`us-east4-eqdc4a` for Neon aws-us-east-1;
+`asia-southeast1-eqsg3a` for the live Supabase in ap-southeast-1).
+
+- **From GitHub** (the live deploy):
+  `railway add --service api --repo billi-x4/Shade --branch main --variables RAILWAY_DOCKERFILE_PATH=backend/Dockerfile`
+  (the same for `worker`). Its first build fails until the variables and the patch below are applied. The created
+  source records only the repo, so pushes deploy nothing; set the branch in the patch
+  (`"source":{"repo":"billi-x4/Shade","branch":"main"}`), which also builds the latest commit.
+  `railway redeploy` reruns the latest deployment's commit; it never picks up a newer one.
 
 - **No `railway.json`/`railway.toml`:** Railway closed Config as Code to new services (it stops reading those files on
   2026-12-01), so a committed file would be ignored. Service settings are an environment patch applied with the CLI.
@@ -1083,12 +1101,15 @@ and `DATABASE_URL_UNPOOLED` forced to the bundled Postgres (`environment:` wins 
    vercel api /v9/projects/shade -X PATCH -F rootDirectory=frontend -F nodeVersion=24.x -F framework=vite -F sourceFilesOutsideRootDirectory=true
    ```
 
-   then `vercel link --yes --project shade` (writes the gitignored `.vercel/`). `frontend/vercel.json` supplies
+   then `vercel link --yes --project shade` (writes the gitignored `.vercel/`). In Git Bash, prefix `vercel api` with
+   `MSYS_NO_PATHCONV=1`, or the `/v9/…` path becomes a Windows path. `vercel link` also writes `.env.local` and appends
+   `.vercel` and `.env*` to `.gitignore`; revert that edit (it re-ignores the `.env*.example` files CI checks). `frontend/vercel.json` supplies
    `framework: vite`, `npm run build` and output `dist`. The production domain (custom, or Vercel's:
    `vercel project inspect shade`) is `APP_ORIGIN`.
 
-3. Replace the placeholder `https://api.example.com` in the `dest` of the `/api/(.*)` and `/v1/(.*)` routes with the
-   Railway domain, then `vercel deploy --prod`. Both routes set `x-shade-edge` from the project variable
+3. Set the `dest` of the `/api/(.*)` and `/v1/(.*)` routes to the Railway domain (the repo holds the live one,
+   `https://api-production-0190f.up.railway.app`), then `vercel deploy --prod`. The project is not connected to Git:
+   only `vercel deploy` updates the site. Both routes set `x-shade-edge` from the project variable
    `SHADE_EDGE_SECRET`, never a literal (a frontend test enforces it and accepts any https origin).
 4. Edge secret: generate once (`node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))"`),
    pipe it to `vercel env add SHADE_EDGE_SECRET production --sensitive --force --yes` and redeploy the frontend

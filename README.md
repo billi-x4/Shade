@@ -4,6 +4,9 @@ Shade is the vendor layer on Zcash: private invoices, payment webhooks, agent sp
 
 _Pay in the dark. Prove in the light. Keys stay yours._
 
+**Live (testnet):** <https://shade-zcash.vercel.app> · **SDK:**
+[`shade-zcash-sdk`](https://www.npmjs.com/package/shade-zcash-sdk) on npm
+
 Shade is not a wallet and never holds seed phrases or spending keys. Payers use their own shielded wallet through
 [ZIP-321](https://zips.z.cash/zip-0321) payment links. Testnet by default. Amounts are in ZEC.
 
@@ -218,8 +221,8 @@ flowchart LR
   Worker -->|"signed webhooks"| Hooks
 ```
 
-- **Vercel** serves `frontend/` (root directory, files outside it included, Node 24.x). Point both `api.example.com`
-  routes in `frontend/vercel.json` at the API.
+- **Vercel** serves `frontend/` (root directory, files outside it included, Node 24.x). The two proxy routes in
+  `frontend/vercel.json` point at the API (now the live Railway one; change them for your own deploy).
 - **Railway** runs `backend/Dockerfile` as the API (healthcheck `/healthz`) and the worker
   (`node /app/backend/src/bin/worker.ts`). Migrate first: pre-deploy command `node /app/backend/src/bin/migrate.ts`
   or `npm run db:migrate`. On Postgres, neither starts while a migration is pending.
