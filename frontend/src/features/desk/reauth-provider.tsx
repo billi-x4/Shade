@@ -88,17 +88,26 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
         describedBy={bodyId}
         initialFocus={passwordRef}
       >
-        <form className="space-y-4 p-6" onSubmit={(event) => void onSubmit(event)} noValidate>
-          <h2 id={titleId} className="font-serif text-2xl">
-            Confirm it is you
-          </h2>
-          <p id={bodyId} className="text-sm text-muted">
-            This change touches money or keys, so Shade asks for your password again. Then it
-            finishes what you started.
-          </p>
-          <p className="text-sm text-muted">
-            Signed in as <span className="wrap-anywhere text-fg">{email}</span>
-          </p>
+        <form className="space-y-5 p-6" onSubmit={(event) => void onSubmit(event)} noValidate>
+          <div className="space-y-3">
+            <p className="flex items-center gap-2.5 font-mono text-[0.7rem] tracking-[0.14em] text-faint uppercase">
+              <span aria-hidden className="h-1 w-6 rounded-[1px] bg-glow" />
+              Password check
+            </p>
+            <h2 id={titleId} className="font-display text-3xl leading-tight">
+              Confirm it is you
+            </h2>
+            <p id={bodyId} className="text-sm text-muted">
+              This change touches money or keys, so Shade asks for your password again. Then it
+              finishes what you started.
+            </p>
+          </div>
+          <div className="rounded-sm border border-line bg-bg/60 px-4 py-3">
+            <p className="font-mono text-[0.7rem] tracking-[0.14em] text-faint uppercase">
+              Signed in as
+            </p>
+            <p className="mt-1 text-sm wrap-anywhere text-fg">{email}</p>
+          </div>
           <Field label="Password" error={error}>
             {(control) => (
               <TextInput

@@ -16,6 +16,8 @@ import { ErrorState, LoadingState, RefreshError } from "@/components/states";
 import { ActionStatus } from "@/features/desk/action-status";
 import { useDeskMutation } from "@/features/desk/use-desk-mutation";
 import { SettingsSection } from "@/features/settings/settings-layout";
+import { Eyebrow, SettingsRow, Slip } from "@/features/settings/settings-row";
+import { cn } from "@/lib/cn";
 import { checkAddressInput } from "@/lib/validation";
 
 const NETWORK_NAME: Record<Network, string> = { testnet: "Testnet", mainnet: "Mainnet" };
@@ -24,10 +26,12 @@ function AddressForm({
   network,
   current,
   managedByKey,
+  index,
 }: {
   network: Network;
   current: string | null;
   managedByKey: boolean;
+  index: number;
 }) {
   const queryClient = useQueryClient();
   const [address, setAddress] = useState("");
@@ -65,37 +69,43 @@ function AddressForm({
   }
 
   return (
-    <div className="space-y-4 rounded-md border border-line-strong bg-surface p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-serif text-2xl">{NETWORK_NAME[network]} receive address</h3>
-        {network === "mainnet" ? <NetworkBadge network="mainnet" /> : null}
-      </div>
+    <SettingsRow
+      index={index}
+      title={`${NETWORK_NAME[network]} address`}
+      badge={network === "mainnet" ? <NetworkBadge network="mainnet" /> : null}
+      note={network === "mainnet" ? "Real ZEC lands here." : "Testnet payments land here."}
+    >
       {current ? (
         <div className="space-y-2">
-          <p className="font-mono text-sm wrap-anywhere">{current}</p>
-          <CopyButton value={current} label="Copy address" variant="quiet" className="px-2" />
+          <Eyebrow>Current</Eyebrow>
+          {/* Keyed by the address, so a saved change lights up once. */}
+          <Slip key={current} className={cn(mutation.isSuccess && "lit")}>
+            {current}
+          </Slip>
+          <CopyButton value={current} label="Copy address" variant="quiet" className="-ml-2 px-2" />
         </div>
       ) : (
-        <p className="text-sm text-warn">
+        <p className="flex gap-2.5 text-sm text-warn">
+          <span aria-hidden className="mt-1.5 h-2.5 w-1 shrink-0 rounded-[1px] bg-warn" />
           No address yet. Invoices, jars and tags on {network} need one.
         </p>
       )}
       {managedByKey ? (
-        <p className="text-sm text-muted">
-          This address comes from your viewing key, so Shade can see payments sent to it. To use
-          another address of the same wallet account, upload the key again under{" "}
+        <p className="max-w-prose text-sm text-muted">
+          This address comes from your viewing key, so Shade sees payments sent to it. To use
+          another address from the same wallet account, upload the key again under{" "}
           <Link to="/desk/settings/detection" className="text-fg underline underline-offset-4">
             Detection
           </Link>{" "}
-          with “Use this key's address” turned off, then save the address here. Shade can't confirm
-          that address belongs to the key, and payments to an address of another account won't be
-          detected.
+          with "Use this key's address" turned off. Then save that address here. Shade cannot check
+          that it belongs to the key. If it comes from another account, Shade will not see payments
+          to it.
         </p>
       ) : (
         <form className="space-y-4" onSubmit={onSubmit} noValidate>
           <Field
             label={current ? "Replace with" : "Unified Address"}
-            hint="Copy it from your wallet's receive screen. It needs a shielded (Orchard) receiver; Shade removes any transparent part. Never paste a seed phrase."
+            hint="Copy it from your wallet's receive screen. It needs a shielded Orchard receiver, and Shade drops any transparent part. Never paste a seed phrase."
             error={error ?? serverError}
           >
             {(control) => (
@@ -112,16 +122,24 @@ function AddressForm({
               />
             )}
           </Field>
-          <Button type="submit" variant="ghost" disabled={mutation.isPending}>
-            {mutation.isPending ? "Saving…" : "Save address"}
-          </Button>
-          {serverError ? null : <ActionStatus mutation={mutation} successText="Saved." />}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Button
+              type="submit"
+              variant={current ? "ghost" : "primary"}
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? "Saving…" : "Save address"}
+            </Button>
+            {serverError ? null : <ActionStatus mutation={mutation} successText="Saved." />}
+          </div>
           {notice ? (
-            <p className="rounded-sm border border-warn/50 p-3 text-sm text-warn">{notice}</p>
+            <p className="rounded-sm border border-warn/50 bg-warn/5 p-3 text-sm text-warn">
+              {notice}
+            </p>
           ) : null}
         </form>
       )}
-    </div>
+    </SettingsRow>
   );
 }
 
@@ -157,39 +175,61 @@ function NetworkChoice({ me, enabled }: { me: Me; enabled: Network[] }) {
   }
 
   return (
-    <div className="space-y-3">
-      {stranded ? (
-        <p className="text-sm text-warn">
-          The desk is on {NETWORK_NAME[current]}, but this server has turned {current} off. New
-          invoices, jars and keys fail until you switch
-          {target ? ` to ${NETWORK_NAME[target].toLowerCase()}` : null}.
+    <SettingsRow
+      index={0}
+      title="Network"
+      note="New invoices, jars and keys use the network the desk is on."
+    >
+      <div className="space-y-2">
+        <Eyebrow>The desk is on</Eyebrow>
+        <p className="flex items-center gap-3 font-display text-5xl leading-none">
+          <span
+            aria-hidden
+            className={cn(
+              "h-[0.62em] w-2 shrink-0 rounded-[2px]",
+              stranded ? "bg-bad" : current === "mainnet" ? "bg-warn" : "bg-glow",
+            )}
+          />
+          {NETWORK_NAME[current]}
         </p>
-      ) : (
-        <p className="text-sm">
-          The desk is on <strong className="font-medium">{NETWORK_NAME[current]}</strong>. New
-          invoices, jars and keys use this network.
-        </p>
-      )}
-      {!stranded && enabled.length < 2 ? (
-        <p className="text-sm text-muted">
-          This server runs {current} only.
-          {enabled.includes("mainnet")
-            ? null
-            : " Mainnet stays off until the operator turns it on."}
-        </p>
-      ) : null}
+      </div>
+      <div className="max-w-prose space-y-1.5 text-sm">
+        {stranded ? (
+          <p className="text-warn">
+            The desk is on {NETWORK_NAME[current]}, but this server has turned {current} off. New
+            invoices, jars and keys fail until you switch
+            {target ? ` to ${NETWORK_NAME[target].toLowerCase()}` : null}.
+          </p>
+        ) : (
+          <p className="text-muted">
+            {current === "testnet"
+              ? "Testnet coins have no value. Mainnet uses real ZEC."
+              : "Invoices ask for real ZEC, and payers send real money."}
+          </p>
+        )}
+        {!stranded && enabled.length < 2 ? (
+          <p className="text-muted">
+            This server runs {current} only.
+            {enabled.includes("mainnet")
+              ? null
+              : " Mainnet stays off until the operator turns it on."}
+          </p>
+        ) : null}
+      </div>
       {target ? (
-        <Button variant="ghost" onClick={() => switchTo(target)} disabled={mutation.isPending}>
-          {mutation.isPending && target !== "mainnet"
-            ? "Switching…"
-            : target === "mainnet"
-              ? "Switch to mainnet"
-              : stranded
-                ? "Switch to testnet"
-                : "Switch back to testnet"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Button variant="ghost" onClick={() => switchTo(target)} disabled={mutation.isPending}>
+            {mutation.isPending && target !== "mainnet"
+              ? "Switching…"
+              : target === "mainnet"
+                ? "Switch to mainnet"
+                : stranded
+                  ? "Switch to testnet"
+                  : "Switch back to testnet"}
+          </Button>
+          {confirmMainnet ? null : <ActionStatus mutation={mutation} />}
+        </div>
       ) : null}
-      {confirmMainnet ? null : <ActionStatus mutation={mutation} />}
       {confirmMainnet ? (
         <ConfirmDialog
           open
@@ -207,12 +247,12 @@ function NetworkChoice({ me, enabled }: { me: Me; enabled: Network[] }) {
         >
           <p>New invoices ask for real ZEC, and payers send real money to your mainnet address.</p>
           <p>
-            Testnet invoices, jars and keys stay on testnet; the desk shows mainnet ones from now
-            on.
+            Your testnet invoices, jars and keys stay on testnet. From now on the desk shows the
+            mainnet ones.
           </p>
         </ConfirmDialog>
       ) : null}
-    </div>
+    </SettingsRow>
   );
 }
 
@@ -228,7 +268,7 @@ export function AddressSettingsPage() {
   return (
     <SettingsSection
       title="Receive addresses & network"
-      intro="Payments go straight to your wallet's Unified Address. Shade never holds a seed or a spending key."
+      intro="Payers send ZEC straight to your wallet. Shade never holds a seed or a spending key."
     >
       {/* Once loaded, a failed refresh keeps the forms and an open dialog on screen. */}
       {me.data === undefined || config.data === undefined || keys.isPending ? (
@@ -240,23 +280,21 @@ export function AddressSettingsPage() {
           <LoadingState label="Loading your settings…" rows={2} />
         )
       ) : (
-        <>
+        <div className="space-y-10">
           {me.isRefetchError ? (
             <RefreshError error={me.error} onRetry={() => void me.refetch()} />
           ) : null}
-          <div className="space-y-3">
-            <h3 className="font-serif text-2xl">Network</h3>
-            <NetworkChoice me={me.data} enabled={config.data.networks} />
-          </div>
-          {config.data.networks.map((network) => (
+          <NetworkChoice me={me.data} enabled={config.data.networks} />
+          {config.data.networks.map((network, index) => (
             <AddressForm
               key={network}
+              index={index + 1}
               network={network}
               current={me.data.merchant.receive_addresses[network]}
               managedByKey={managedNetworks(keys.data).has(network)}
             />
           ))}
-        </>
+        </div>
       )}
     </SettingsSection>
   );

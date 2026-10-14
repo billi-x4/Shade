@@ -34,7 +34,9 @@ describe("tags settings", () => {
     renderWithAnnouncer(<TagsSettingsPage />);
     const input = await screen.findByLabelText("Name");
     expect(
-      screen.getByText(/Lowercase letters, digits and hyphens \(not at the start or end\)/),
+      screen.getByText(
+        /Up to 32 lowercase letters, digits and hyphens\. A hyphen cannot start or end it\./,
+      ),
     ).toBeTruthy();
     for (const value of ["my_shop", "shop-"]) {
       fireEvent.change(input, { target: { value } });

@@ -12,7 +12,7 @@ import { safeDeskRedirect } from "@/lib/validation";
 const route = getRouteApi("/login");
 
 const LINK =
-  "inline-flex min-h-11 items-center text-sm text-muted underline underline-offset-4 hover:text-fg";
+  "inline-flex min-h-11 items-center text-sm text-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-fg hover:decoration-accent";
 
 export function LoginPage() {
   const { redirect } = route.useSearch();
@@ -88,13 +88,16 @@ export function LoginPage() {
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-      <div className="flex flex-wrap justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 border-t border-line pt-3">
         <Link to="/reset-password" className={LINK}>
           Forgot your password?
         </Link>
-        <Link to="/signup" className={LINK}>
-          Create an account
-        </Link>
+        <p className="text-sm text-faint">
+          New to Shade?{" "}
+          <Link to="/signup" className={LINK}>
+            Create an account
+          </Link>
+        </p>
       </div>
     </AuthLayout>
   );

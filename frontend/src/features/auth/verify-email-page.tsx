@@ -10,7 +10,7 @@ import { AuthLayout, FormMessage } from "@/features/auth/auth-layout";
 const route = getRouteApi("/verify-email");
 
 const LINK =
-  "inline-flex min-h-11 items-center text-sm text-muted underline underline-offset-4 hover:text-fg";
+  "inline-flex min-h-11 items-center text-sm text-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-fg hover:decoration-accent";
 
 export function VerifyEmailPage() {
   const { error: linkError } = route.useSearch();
@@ -42,7 +42,7 @@ export function VerifyEmailPage() {
       setError(authErrorMessage(result?.error ?? { status: 0 }));
       return;
     }
-    setNotice("Sent. Check your inbox; the link works for one hour.");
+    setNotice("Sent. Check your inbox. The link works for one hour.");
   }
 
   return (
@@ -83,9 +83,12 @@ export function VerifyEmailPage() {
           {pending ? "Sending…" : unverified ? "Send a new link" : "Send the link again"}
         </Button>
       </form>
-      <Link to="/login" className={LINK}>
-        Verified already? Sign in
-      </Link>
+      <p className="border-t border-line pt-3 text-sm text-faint">
+        Confirmed already?{" "}
+        <Link to="/login" className={LINK}>
+          Sign in
+        </Link>
+      </p>
     </AuthLayout>
   );
 }

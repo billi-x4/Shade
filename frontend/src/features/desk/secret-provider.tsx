@@ -58,48 +58,69 @@ export function SecretProvider({ children }: { children: ReactNode }) {
         describedBy={introId}
       >
         {secret ? (
-          <div className="space-y-5 p-6">
-            <div className="space-y-2">
-              <h2 id={titleId} className="font-serif text-2xl leading-tight">
-                {secret.title}
-              </h2>
-              {position ? (
-                <p id={positionId} className="text-sm text-muted tabular">
-                  {position}
-                </p>
-              ) : null}
-              <div id={introId} className="text-sm text-muted">
-                {secret.intro}
-              </div>
-            </div>
-            <div className="space-y-4">
-              {secret.items.map((item) => (
-                <div key={item.label} className="space-y-2">
-                  <p className="text-sm font-medium">{item.label}</p>
-                  <div className="on-paper rounded-sm p-3">
-                    <code
-                      className={
-                        item.block
-                          ? "block font-mono text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap"
-                          : "block font-mono text-sm wrap-anywhere"
-                      }
-                    >
-                      {item.value}
-                    </code>
-                  </div>
-                  <CopyButton value={item.value} label={`Copy ${item.label.toLowerCase()}`} />
+          <div>
+            <div className="space-y-6 p-6 pb-5">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3 font-mono text-[0.7rem] tracking-[0.14em] uppercase">
+                  <p className="flex items-center gap-2.5 text-faint">
+                    <span aria-hidden className="h-1 w-6 rounded-[1px] bg-glow" />
+                    Shown once
+                  </p>
+                  {position ? (
+                    <p id={positionId} className="text-muted tabular">
+                      {position}
+                    </p>
+                  ) : null}
                 </div>
-              ))}
-            </div>
-            {secret.notes?.length ? (
-              <ul className="space-y-2 border-t border-line pt-4 text-sm text-muted">
-                {secret.notes.map((note, index) => (
-                  <li key={index}>{note}</li>
+                <h2 id={titleId} className="font-display text-3xl leading-tight wrap-anywhere">
+                  {secret.title}
+                </h2>
+                <div id={introId} className="text-sm text-muted">
+                  {secret.intro}
+                </div>
+              </div>
+              <div className="space-y-5">
+                {secret.items.map((item) => (
+                  <div key={item.label} className="space-y-2">
+                    <p className="font-mono text-[0.7rem] tracking-[0.14em] text-faint uppercase">
+                      {item.label}
+                    </p>
+                    {/* On paper: the value reads like a slip handed over once. */}
+                    <div className="on-paper rounded-sm px-4 py-3 shadow-[0_12px_30px_-18px_var(--color-glow)]">
+                      <code
+                        className={
+                          item.block
+                            ? "block font-mono text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap"
+                            : "block font-mono text-sm leading-relaxed wrap-anywhere"
+                        }
+                      >
+                        {item.value}
+                      </code>
+                    </div>
+                    <CopyButton value={item.value} label={`Copy ${item.label.toLowerCase()}`} />
+                  </div>
                 ))}
-              </ul>
-            ) : null}
-            <div className="flex justify-end border-t border-line pt-4">
-              <Button onClick={onSaved}>I saved it</Button>
+              </div>
+              {secret.notes?.length ? (
+                <ul className="space-y-2.5 border-t border-line pt-5 text-sm text-muted">
+                  {secret.notes.map((note, index) => (
+                    <li key={index} className="flex gap-3">
+                      <span
+                        aria-hidden
+                        className="mt-2.5 h-[3px] w-3 shrink-0 rounded-[1px] bg-line-strong"
+                      />
+                      <span className="min-w-0">{note}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            {/* Stays in view while a long secret scrolls: the one way out is always visible. */}
+            <div className="sticky bottom-0 flex flex-col gap-3 border-t border-line bg-surface px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-faint">Shade cannot show it again after you close this.</p>
+              <Button onClick={onSaved} className="w-full shrink-0 sm:w-auto">
+                I saved it
+              </Button>
             </div>
           </div>
         ) : null}

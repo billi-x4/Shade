@@ -28,7 +28,7 @@ describe("detection settings", () => {
     const checkbox = await screen.findByLabelText("Use this key's address");
     const hint = document.getElementById(checkbox.getAttribute("aria-describedby") ?? "");
     expect(hint?.textContent).toBe(
-      "Your receive address becomes this key's own shielded address, the only one Shade can confirm belongs to the key. Turn this off to keep another address of the same wallet account.",
+      "Your receive address becomes this key's own address. It is the only address Shade can confirm belongs to the key. Turn this off to keep another address from the same wallet account.",
     );
   });
 
@@ -91,7 +91,7 @@ describe("detection settings", () => {
     ]);
     renderWithAnnouncer(<DetectionSettingsPage />);
     expect(
-      await screen.findByText("Your own address (Shade can't confirm it belongs to this key)"),
+      await screen.findByText("Your own address. Shade cannot check that it belongs to this key."),
     ).toBeTruthy();
     expect(
       screen.getByText(/A payment Shade found was already confirmed on another invoice\./),

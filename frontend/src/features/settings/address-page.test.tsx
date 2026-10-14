@@ -104,7 +104,7 @@ describe("receive address with a viewing key", () => {
     renderWithRouter(<AddressSettingsPage />);
     const paragraph = await screen.findByText(/This address comes from your viewing key/);
     expect(paragraph.textContent).toBe(
-      "This address comes from your viewing key, so Shade can see payments sent to it. To use another address of the same wallet account, upload the key again under Detection with “Use this key's address” turned off, then save the address here. Shade can't confirm that address belongs to the key, and payments to an address of another account won't be detected.",
+      `This address comes from your viewing key, so Shade sees payments sent to it. To use another address from the same wallet account, upload the key again under Detection with "Use this key's address" turned off. Then save that address here. Shade cannot check that it belongs to the key. If it comes from another account, Shade will not see payments to it.`,
     );
     expect(screen.getByRole("link", { name: "Detection" }).getAttribute("href")).toBe(
       "/desk/settings/detection",

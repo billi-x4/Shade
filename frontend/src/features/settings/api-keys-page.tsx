@@ -16,9 +16,16 @@ import { ActionStatus } from "@/features/desk/action-status";
 import { useRevealSecret } from "@/features/desk/desk-context";
 import { useDeskMutation } from "@/features/desk/use-desk-mutation";
 import { SettingsSection } from "@/features/settings/settings-layout";
+import { SettingsRow } from "@/features/settings/settings-row";
+import { cn } from "@/lib/cn";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { useNow } from "@/lib/hooks";
 import { checkLabel } from "@/lib/validation";
+
+/** The API sends the visible start of a key already ending in "…" (sk_test_AbCd…). */
+function keyStart(prefix: string): string {
+  return prefix.endsWith("…") ? prefix.slice(0, -1) : prefix;
+}
 
 function KeyForm({ networks, defaultNetwork }: { networks: Network[]; defaultNetwork: Network }) {
   const reveal = useRevealSecret();
@@ -29,7 +36,7 @@ function KeyForm({ networks, defaultNetwork }: { networks: Network[]; defaultNet
   const mutation = useDeskMutation({
     mutationFn: createApiKey,
     invalidate: () => [qk.apiKeys],
-    success: () => "Server key created. Copy it now; Shade shows it once.",
+    success: () => "Server key created. Copy it now. Shade shows it once.",
     onSuccess: (key) => {
       setLabel("");
       reveal({
@@ -38,8 +45,9 @@ function KeyForm({ networks, defaultNetwork }: { networks: Network[]; defaultNet
         items: [{ label: "Key", value: key.token }],
         notes: [
           <>
-            Send it as <code className="text-fg">Authorization: Bearer {key.prefix}…</code> from
-            your server. Never put it in a browser or an app.
+            Send it as{" "}
+            <code className="text-fg">Authorization: Bearer {keyStart(key.prefix)}…</code> from your
+            server. Never put it in a browser or an app.
           </>,
         ],
       });
@@ -58,12 +66,7 @@ function KeyForm({ networks, defaultNetwork }: { networks: Network[]; defaultNet
   }
 
   return (
-    <form
-      className="space-y-4 rounded-md border border-line-strong bg-surface p-5"
-      onSubmit={onSubmit}
-      noValidate
-    >
-      <h3 className="font-serif text-2xl">New server key</h3>
+    <form className="space-y-4" onSubmit={onSubmit} noValidate>
       <Field
         label="Label"
         hint="Where the key lives, so you know what breaks if you revoke it."
@@ -90,17 +93,19 @@ function KeyForm({ networks, defaultNetwork }: { networks: Network[]; defaultNet
             >
               {networks.map((option) => (
                 <option key={option} value={option}>
-                  {option === "testnet" ? "Testnet (sk_test_)" : "Mainnet, real ZEC (sk_live_)"}
+                  {option === "testnet" ? "Testnet · sk_test_" : "Mainnet, real ZEC · sk_live_"}
                 </option>
               ))}
             </Select>
           )}
         </Field>
       ) : null}
-      <Button type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? "Creating…" : "Create key"}
-      </Button>
-      <ActionStatus mutation={mutation} />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? "Creating…" : "Create key"}
+        </Button>
+        <ActionStatus mutation={mutation} />
+      </div>
     </form>
   );
 }
@@ -115,27 +120,30 @@ function KeyRow({ apiKey, now }: { apiKey: ApiKey; now: number }) {
   });
   const revoked = apiKey.revoked_at !== null;
   return (
-    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 py-5">
-      <div className="min-w-0 space-y-1">
-        <p className="font-medium wrap-anywhere">
-          {apiKey.label || "Unnamed key"}{" "}
-          <span className="font-normal text-muted">
-            · {apiKey.kind === "agent" ? "agent key" : "server key"}
+    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 py-5 first:pt-0 last:pb-0">
+      <div className="min-w-0 flex-1 basis-60 space-y-1.5">
+        <p className="flex flex-wrap items-baseline gap-x-2">
+          <span className={cn("font-medium wrap-anywhere", revoked ? "text-muted" : "text-fg")}>
+            {apiKey.label || "Unnamed key"}
+          </span>
+          <span className="text-sm text-faint">
+            {apiKey.kind === "agent" ? "Agent key" : "Server key"}
           </span>
         </p>
-        <p className="font-mono text-sm text-muted">
-          {apiKey.prefix}…{apiKey.last4}
+        <p className={cn("font-mono text-sm", revoked ? "text-faint" : "text-muted")}>
+          {keyStart(apiKey.prefix)}…{apiKey.last4}
         </p>
         <p className="text-sm text-faint">
           {apiKey.jar_id ? (
             <>
-              Jar <code>{apiKey.jar_id}</code> ·{" "}
+              Jar <code className="text-muted">{apiKey.jar_id}</code> ·{" "}
             </>
           ) : null}
           Created {formatDateTime(apiKey.created_at)} ·{" "}
           {apiKey.last_used_at
             ? `last used ${formatRelative(apiKey.last_used_at, now)}`
             : "never used"}
+          {apiKey.revoked_at ? ` · revoked ${formatDateTime(apiKey.revoked_at)}` : null}
         </p>
         {confirming ? null : <ActionStatus mutation={mutation} />}
       </div>
@@ -163,11 +171,21 @@ function KeyRow({ apiKey, now }: { apiKey: ApiKey; now: number }) {
             setConfirming(false);
           }}
         >
-          <p>Anything using this key stops working right away. This cannot be undone.</p>
+          <p>Anything that uses this key stops working at once. You cannot undo this.</p>
           {apiKey.kind === "agent" ? <p>The agent can no longer charge its jar.</p> : null}
         </ConfirmDialog>
       ) : null}
     </li>
+  );
+}
+
+function KeyList({ keys, now }: { keys: ApiKey[]; now: number }) {
+  return (
+    <ul className="divide-y divide-line">
+      {keys.map((apiKey) => (
+        <KeyRow key={apiKey.id} apiKey={apiKey} now={now} />
+      ))}
+    </ul>
   );
 }
 
@@ -176,42 +194,65 @@ export function ApiKeysSettingsPage() {
   const me = useQuery(meQuery);
   const keys = useQuery(apiKeysQuery);
   const now = useNow(30_000);
+  const live = keys.data?.filter((apiKey) => apiKey.revoked_at === null) ?? [];
+  const revoked = keys.data?.filter((apiKey) => apiKey.revoked_at !== null) ?? [];
   return (
     <SettingsSection
       title="API keys"
-      intro="Server keys call the /v1 API for your shop. Agent keys are made from a jar on the Jars page and can only charge that jar."
+      intro="A server key lets your own backend call the Shade API for this shop. Agent keys come from a jar on the Jars page and can only charge that jar."
     >
-      {config.data && me.data ? (
-        <KeyForm
-          networks={config.data.networks}
-          defaultNetwork={
-            // A desk left on a network the operator turned off must not preselect it.
-            config.data.networks.includes(me.data.merchant.network)
-              ? me.data.merchant.network
-              : (config.data.networks[0] ?? me.data.merchant.network)
+      <div className="space-y-10">
+        {config.data && me.data ? (
+          <SettingsRow
+            index={0}
+            title="New server key"
+            note="Shade shows the key once, right after you create it. Keep it on your server."
+          >
+            <KeyForm
+              networks={config.data.networks}
+              defaultNetwork={
+                // A desk left on a network the operator turned off must not preselect it.
+                config.data.networks.includes(me.data.merchant.network)
+                  ? me.data.merchant.network
+                  : (config.data.networks[0] ?? me.data.merchant.network)
+              }
+            />
+          </SettingsRow>
+        ) : null}
+        <SettingsRow
+          index={1}
+          title="Live keys"
+          note={
+            keys.data ? (
+              <span className="block font-display text-4xl leading-none text-fg tabular">
+                {live.length}
+              </span>
+            ) : undefined
           }
-        />
-      ) : null}
-      {keys.data && keys.isRefetchError ? (
-        <RefreshError error={keys.error} onRetry={() => void keys.refetch()} />
-      ) : null}
-      {keys.data === undefined ? (
-        keys.isError ? (
-          <ErrorState error={keys.error} onRetry={() => void keys.refetch()} />
-        ) : (
-          <LoadingState label="Loading keys…" rows={2} />
-        )
-      ) : keys.data.length === 0 ? (
-        <EmptyState title="No keys yet.">
-          Create a server key to call the API from your backend.
-        </EmptyState>
-      ) : (
-        <ul className="divide-y divide-line border-y border-line">
-          {keys.data.map((apiKey) => (
-            <KeyRow key={apiKey.id} apiKey={apiKey} now={now} />
-          ))}
-        </ul>
-      )}
+        >
+          {keys.data && keys.isRefetchError ? (
+            <RefreshError error={keys.error} onRetry={() => void keys.refetch()} />
+          ) : null}
+          {keys.data === undefined ? (
+            keys.isError ? (
+              <ErrorState error={keys.error} onRetry={() => void keys.refetch()} />
+            ) : (
+              <LoadingState label="Loading keys…" rows={2} />
+            )
+          ) : live.length === 0 ? (
+            <EmptyState title={keys.data.length === 0 ? "No keys yet." : "No live keys."}>
+              Create a server key to call the API from your backend.
+            </EmptyState>
+          ) : (
+            <KeyList keys={live} now={now} />
+          )}
+        </SettingsRow>
+        {revoked.length > 0 ? (
+          <SettingsRow index={2} title="Revoked" note="These keys no longer work.">
+            <KeyList keys={revoked} now={now} />
+          </SettingsRow>
+        ) : null}
+      </div>
     </SettingsSection>
   );
 }

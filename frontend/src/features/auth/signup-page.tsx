@@ -11,7 +11,7 @@ import { fieldErrorSummary } from "@/features/auth/form-errors";
 import { checkPassword, DISPLAY_NAME_MAX } from "@/lib/validation";
 
 const LINK =
-  "inline-flex min-h-11 items-center text-sm text-muted underline underline-offset-4 hover:text-fg";
+  "inline-flex min-h-11 items-center text-sm text-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-fg hover:decoration-accent";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const FIELDS = ["name", "email", "password", "confirm"] as const;
@@ -83,7 +83,7 @@ export function SignupPage() {
     <AuthLayout
       title="Create your desk"
       documentTitle="Create account"
-      intro="Send private invoices, cap an agent's spending, and share receipts. Shade never asks for your seed."
+      intro="Send private ZEC invoices and cap what an AI agent can spend. Shade never asks for your seed phrase."
     >
       <form className="space-y-5" onSubmit={(event) => void onSubmit(event)} noValidate>
         <Field
@@ -115,7 +115,11 @@ export function SignupPage() {
             />
           )}
         </Field>
-        <Field label="Password" hint={`At least ${minLength} characters.`} error={errors.password}>
+        <Field
+          label="Password"
+          hint={`${minLength} to 128 characters. A long phrase is easy to remember.`}
+          error={errors.password}
+        >
           {(control) => (
             <TextInput
               {...control}
@@ -144,9 +148,12 @@ export function SignupPage() {
           {pending ? "Creating…" : "Create account"}
         </Button>
       </form>
-      <Link to="/login" className={LINK}>
-        Already have an account? Sign in
-      </Link>
+      <p className="border-t border-line pt-3 text-sm text-faint">
+        Already have an account?{" "}
+        <Link to="/login" className={LINK}>
+          Sign in
+        </Link>
+      </p>
     </AuthLayout>
   );
 }

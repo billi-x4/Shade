@@ -10,6 +10,7 @@ import { ErrorState, LoadingState } from "@/components/states";
 import { ActionStatus } from "@/features/desk/action-status";
 import { useDeskMutation } from "@/features/desk/use-desk-mutation";
 import { SettingsSection } from "@/features/settings/settings-layout";
+import { Eyebrow, SettingsRow } from "@/features/settings/settings-row";
 import { DISPLAY_NAME_MAX } from "@/lib/validation";
 
 function ProfileForm({ me }: { me: Me }) {
@@ -32,13 +33,13 @@ function ProfileForm({ me }: { me: Me }) {
   }
 
   return (
-    <form className="space-y-5" onSubmit={onSubmit} noValidate>
+    <form className="space-y-4" onSubmit={onSubmit} noValidate>
       <Field
         label="Shop name"
-        hint="Payers see it on your pay pages. Leave it empty to show no name."
+        hint="Leave it empty to show no name."
         error={error}
         aside={
-          <span className="text-xs text-faint tabular">
+          <span className="font-mono text-xs text-faint tabular">
             {name.trim().length}/{DISPLAY_NAME_MAX}
           </span>
         }
@@ -53,10 +54,12 @@ function ProfileForm({ me }: { me: Me }) {
           />
         )}
       </Field>
-      <Button type="submit" variant="ghost" disabled={mutation.isPending}>
-        {mutation.isPending ? "Saving…" : "Save"}
-      </Button>
-      <ActionStatus mutation={mutation} successText="Saved." />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Button type="submit" variant="ghost" disabled={mutation.isPending}>
+          {mutation.isPending ? "Saving…" : "Save"}
+        </Button>
+        <ActionStatus mutation={mutation} successText="Saved." />
+      </div>
     </form>
   );
 }
@@ -64,7 +67,7 @@ function ProfileForm({ me }: { me: Me }) {
 export function ProfileSettingsPage() {
   const me = useQuery(meQuery);
   return (
-    <SettingsSection title="Profile">
+    <SettingsSection title="Profile" intro="The name payers see, and the email you sign in with.">
       {me.data === undefined ? (
         me.isError ? (
           <ErrorState error={me.error} onRetry={() => void me.refetch()} />
@@ -72,12 +75,20 @@ export function ProfileSettingsPage() {
           <LoadingState label="Loading your profile…" rows={1} />
         )
       ) : (
-        <div className="space-y-8">
-          <ProfileForm me={me.data} />
-          <div className="space-y-1 border-t border-line pt-6 text-sm">
-            <p className="text-muted">Signed in as</p>
-            <p className="wrap-anywhere">{me.data.user.email}</p>
-          </div>
+        <div className="space-y-10">
+          <SettingsRow
+            index={0}
+            title="Pay pages"
+            note="Payers see your shop name on every pay page."
+          >
+            <ProfileForm me={me.data} />
+          </SettingsRow>
+          <SettingsRow index={1} title="Account">
+            <div className="space-y-1">
+              <Eyebrow>Signed in as</Eyebrow>
+              <p className="text-lg wrap-anywhere">{me.data.user.email}</p>
+            </div>
+          </SettingsRow>
         </div>
       )}
     </SettingsSection>

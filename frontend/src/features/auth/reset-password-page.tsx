@@ -13,7 +13,7 @@ import { checkPassword } from "@/lib/validation";
 const route = getRouteApi("/reset-password");
 
 const LINK =
-  "inline-flex min-h-11 items-center text-sm text-muted underline underline-offset-4 hover:text-fg";
+  "inline-flex min-h-11 items-center text-sm text-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-fg hover:decoration-accent";
 
 function RequestForm({ expired }: { expired: boolean }) {
   const [email, setEmail] = useState("");
@@ -48,7 +48,7 @@ function RequestForm({ expired }: { expired: boolean }) {
       intro={
         expired
           ? "Reset links work once, for one hour. Ask for a new one."
-          : "We email you a link to choose a new password. Saving it signs you out on every device."
+          : "We email you a link to choose a new password. Saving the new password signs you out on every device."
       }
     >
       <form className="space-y-5" onSubmit={(event) => void onSubmit(event)} noValidate>
@@ -69,9 +69,11 @@ function RequestForm({ expired }: { expired: boolean }) {
           {pending ? "Sending…" : "Email me a reset link"}
         </Button>
       </form>
-      <Link to="/login" className={LINK}>
-        Back to sign in
-      </Link>
+      <p className="border-t border-line pt-3">
+        <Link to="/login" className={LINK}>
+          Back to sign in
+        </Link>
+      </p>
     </AuthLayout>
   );
 }
@@ -124,7 +126,7 @@ function NewPasswordForm({ token }: { token: string }) {
       <form className="space-y-5" onSubmit={(event) => void onSubmit(event)} noValidate>
         <Field
           label="New password"
-          hint={`At least ${minLength} characters.`}
+          hint={`${minLength} to 128 characters. A long phrase is easy to remember.`}
           error={errors.password}
         >
           {(control) => (
