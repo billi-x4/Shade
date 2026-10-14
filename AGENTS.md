@@ -243,6 +243,12 @@ camelCase types).
 - Guards and headers read the session with a plain `GET /api/auth/get-session` (`api/session.ts`); only auth and desk
   pages import the Better Auth client (`api/auth.ts`), so the pay page never loads it.
 - After client-side navigation, focus moves to the page's h1 (`components/page-focus.ts`).
+- Design system ("light through the blinds"): tokens, type and motion live in `src/styles.css`. Night ink for the
+  private side; `accent` (gold) for actions and focus, `glow` for decorative light (the `blinds` slat texture, the
+  wordmark's lit bar); `.theme-paper` flips every token for the proof side (the auditor's grant view). Type:
+  `font-display` (Bricolage Grotesque, condensed), `font-sans` (Instrument Sans), `font-mono` (Martian Mono for
+  ids, addresses, txids, memos and code). Use the tokens, never raw hex; `fg`, `muted` and `faint` meet 4.5:1 on
+  every surface and `line-strong` 3:1 (`line` is decorative only).
 
 ### 4.4 Backend
 
@@ -1164,7 +1170,7 @@ version in the lockfile today.
 - **Both workspaces:** `better-auth` `1.7.7` (desk sessions; `better-auth/react` client in the SPA).
 - **Frontend:** `react`/`react-dom` 19; `@tanstack/react-router` (file routes); `@tanstack/react-query` 5 (all server
   state); `qrcode` (QR of the ZIP-321 URI, `lib/qr.ts`); `lucide-react` (icons); `clsx` and `tailwind-merge` (`cn()` in
-  `lib/cn.ts`: conditional classes, Tailwind conflicts); `@fontsource-variable/*` (self-hosted Figtree and Newsreader).
+  `lib/cn.ts`: conditional classes, Tailwind conflicts); `@fontsource-variable/*` (self-hosted Bricolage Grotesque, Instrument Sans and Martian Mono).
 - `shade-zcash-sdk` has no runtime dependencies (`fetch`, WebCrypto). Resend's HTTP API is called with `fetch` and
   lightwalletd over `node:http2`: no client libraries.
 

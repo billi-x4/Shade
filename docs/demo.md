@@ -143,7 +143,7 @@ transaction is shielded, newer than the invoice and mined with the minimum confi
 ```mermaid
 stateDiagram-v2
   state "Awaiting payment" as O
-  state "Unverified — payer reported a transaction" as R
+  state "Unverified · the payer sent a transaction id" as R
   state "Paid · confirmed by shop" as P
   O --> R: payer sends txid
   R --> P: Confirm
