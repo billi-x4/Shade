@@ -4,6 +4,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { tokenFromHash } from "@/features/grant-view/grant-token";
 import { GrantView } from "@/features/grant-view/grant-view";
+import { formatDateTime } from "@/lib/format";
 import { mockFetch, renderWithQuery } from "@/test/utils";
 
 const TOKEN = "gv_Q2hhbmdlIHRoaXMgdG9rZW4gYmVmb3JlIHNoaXBwaW5n";
@@ -92,12 +93,37 @@ describe("grant view", () => {
       { path: "/api/config", body: { explorer_tx_url: { testnet: null, mainnet: null } } },
     ]);
     renderWithQuery(<GrantView />);
-    const line = await screen.findByText(/This view is shared by the shop until/);
-    expect(line.textContent).toMatch(
-      /^Expires in \d+ min · This view is shared by the shop until .+\. The shop can end it at any time\.$/,
-    );
+    expect(await screen.findByText(/^Expires in \d+ min$/)).toBeTruthy();
+    const expiresAt = active.state === "active" ? active.expires_at : "";
+    expect(screen.getByText("Open until")).toBeTruthy();
+    expect(screen.getByText(formatDateTime(expiresAt))).toBeTruthy();
+    expect(screen.getByText("The shop can end this view at any time.")).toBeTruthy();
     expect(screen.queryByText(/Delete the file on their machine/)).toBeNull();
     expect(screen.queryByText(/Showing the newest/)).toBeNull();
+  });
+
+  it("shows each receipt's memo hash short and copies it in full", async () => {
+    openAt(`#${TOKEN}`);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    const first = active.state === "active" ? active.receipts[0] : undefined;
+    if (!first) throw new Error("the fixture has a receipt");
+    const memoHash = `sha256:${"ab".repeat(32)}`;
+    mockFetch([
+      {
+        method: "POST",
+        path: "/api/public/grants/view",
+        body: { ...active, receipts: [{ ...first, memo_hash: memoHash }] },
+      },
+      { path: "/api/config", body: { explorer_tx_url: { testnet: null, mainnet: null } } },
+    ]);
+    renderWithQuery(<GrantView />);
+    const shown = await screen.findByTitle(memoHash);
+    expect(shown.textContent).toBe("ababababab…ababababab");
+    const count = screen.getByText("Receipts", { selector: "dt" }).nextElementSibling;
+    expect(count?.textContent).toBe("1");
+    fireEvent.click(screen.getByRole("button", { name: "Copy hash" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(memoHash));
   });
 
   it("says when the list stops at the newest 500 receipts", async () => {

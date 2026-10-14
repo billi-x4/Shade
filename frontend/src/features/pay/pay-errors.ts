@@ -3,7 +3,7 @@ import { formatWait } from "@/lib/format";
 
 /** Shown when the pasted text is not 64 hex characters (checked before anything is sent). */
 export const TXID_FORMAT_MESSAGE =
-  "A transaction id is 64 characters, 0–9 and a–f. Copy it again from your wallet.";
+  "A transaction id is 64 characters, only 0 to 9 and a to f. Copy it again from your wallet.";
 
 /** Payer-facing copy for the "already paid" txid check. Plain words; no protocol jargon. */
 export function txidErrorMessage(error: unknown): string {

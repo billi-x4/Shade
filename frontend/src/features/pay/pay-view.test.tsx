@@ -178,6 +178,16 @@ describe("pay page", () => {
     expect(screen.queryByRole("link", { name: "Open in wallet" })).toBeNull();
   });
 
+  it("cancelled: tells the payer not to pay and announces it", async () => {
+    renderPay(invoice({ status: "cancelled" }));
+    expect(await screen.findByText("Cancelled.")).toBeTruthy();
+    expect(screen.getByText("The shop cancelled this invoice. Do not pay it.")).toBeTruthy();
+    expect(screen.getByText("The shop cancelled this invoice.").getAttribute("role")).toBe(
+      "status",
+    );
+    expectNoPaymentControls();
+  });
+
   it("open but past expires_at on this device: no payment controls", async () => {
     renderPay(invoice({ expires_at: new Date(Date.now() - 60_000).toISOString() }));
     expect(await screen.findByText("Expired.")).toBeTruthy();
@@ -190,7 +200,7 @@ describe("pay page", () => {
     );
   });
 
-  it("expired but seen on chain: says it is being confirmed, never invites another payment", async () => {
+  it("expired but seen on chain: says the network is confirming it, never invites another payment", async () => {
     renderPay(
       invoice({
         status: "expired",
@@ -202,7 +212,7 @@ describe("pay page", () => {
     );
     expect(await screen.findByText("Seen on the network · 1 of 3 confirmations.")).toBeTruthy();
     expect(
-      screen.getByText("Your payment is on the network and is being confirmed. Do not pay again."),
+      screen.getByText("The network is confirming your payment. Do not pay again."),
     ).toBeTruthy();
     expect(screen.queryByText("Expired.")).toBeNull();
     expect(screen.queryByText(/ask the shop for a new one/)).toBeNull();
@@ -220,7 +230,7 @@ describe("pay page", () => {
     );
     expect(await screen.findByRole("link", { name: "Open in wallet" })).toBeTruthy();
     expect(
-      await screen.findByText(/is being confirmed\. Do not pay again\./, undefined, {
+      await screen.findByText(/is confirming your payment\. Do not pay again\./, undefined, {
         timeout: 3_000,
       }),
     ).toBeTruthy();
@@ -242,7 +252,7 @@ describe("pay page", () => {
 
   it("never turns a non-zcash URI into a link", async () => {
     renderPay(invoice({ zip321: "javascript:alert(1)" }));
-    expect(await screen.findByText(/cannot be paid from this page/)).toBeTruthy();
+    expect(await screen.findByText(/cannot pay this invoice from this page/)).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Open in wallet" })).toBeNull();
   });
 
@@ -351,7 +361,7 @@ describe("pay page polling", () => {
       },
     ]);
     renderWithQuery(<PayView id="inv_1" />);
-    expect(await screen.findByText(/is being confirmed/)).toBeTruthy();
+    expect(await screen.findByText(/is confirming your payment/)).toBeTruthy();
     await advancePoll();
     expect(await screen.findByText("Paid.")).toBeTruthy();
     expect(invoiceGets(calls)).toBe(2);
