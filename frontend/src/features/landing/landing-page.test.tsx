@@ -18,7 +18,9 @@ describe("landing page", () => {
     renderWithRouter(<LandingPage />);
     await screen.findByRole("heading", { level: 1 });
     expect(
-      screen.getByText("Private invoices, payment webhooks and agent spending caps on Zcash."),
+      screen.getByText(
+        "Shade gives your shop private Zcash invoices, a signed webhook when each one is paid, receipt views you can revoke and spending caps for AI agents.",
+      ),
     ).toBeTruthy();
     expect(hero().getByRole("link", { name: "Create account" }).getAttribute("href")).toBe(
       "/signup",
@@ -34,6 +36,15 @@ describe("landing page", () => {
     expect(link.getAttribute("href")).toBe("/desk/invoices");
   });
 
+  it("reads the tagline as one heading, with the lit line in the middle", async () => {
+    session(null);
+    renderWithRouter(<LandingPage />);
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Pay in the dark. Prove in the light. Keys stay yours.",
+    );
+  });
+
   it("walks the loop as numbered steps in plain words", async () => {
     session(null);
     renderWithRouter(<LandingPage />);
@@ -46,8 +57,19 @@ describe("landing page", () => {
       "4.",
       "5.",
     ]);
-    expect(loop.getByText(/The fourth call is refused: the jar is empty\./)).toBeTruthy();
+    expect(loop.getByText(/Shade refuses the fourth call\. The jar is empty\./)).toBeTruthy();
     expect(screen.queryByText(/JAR_EMPTY/)).toBeNull();
     expect(screen.queryByText("0:00")).toBeNull();
+  });
+
+  it("shows what a shielded payment hides, in words a screen reader can hear", async () => {
+    session(null);
+    renderWithRouter(<LandingPage />);
+    const problem = within(
+      await screen.findByRole("region", { name: "A public chain shows everyone your sales." }),
+    );
+    expect(problem.getByRole("heading", { name: "On a public chain" })).toBeTruthy();
+    expect(problem.getByRole("heading", { name: "On Zcash, shielded" })).toBeTruthy();
+    expect(problem.getAllByText("Hidden")).toHaveLength(4);
   });
 });
