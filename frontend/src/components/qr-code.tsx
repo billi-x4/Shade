@@ -25,8 +25,8 @@ export function QrCode({
       shapeRendering="crispEdges"
       className={cn("block h-auto w-full", className)}
     >
-      <rect width={qr.size} height={qr.size} fill="#f4f3f1" />
-      <path d={qr.d} fill="#0e0e10" />
+      <rect width={qr.size} height={qr.size} fill="#f4eee0" />
+      <path d={qr.d} fill="#0a0b0e" />
     </svg>
   );
 }

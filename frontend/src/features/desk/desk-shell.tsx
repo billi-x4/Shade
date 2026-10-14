@@ -17,7 +17,7 @@ const PRIMARY = [
 ] as const;
 
 const NAV_LINK =
-  "inline-flex min-h-11 items-center px-1.5 text-sm text-muted transition-colors hover:text-fg data-[status=active]:text-fg data-[status=active]:underline data-[status=active]:decoration-paper data-[status=active]:underline-offset-8";
+  "relative inline-flex min-h-11 items-center px-1.5 text-sm font-medium text-muted transition-colors after:absolute after:inset-x-1.5 after:bottom-1 after:h-[3px] after:origin-left after:scale-x-0 after:rounded-[1px] after:bg-accent after:transition-transform after:duration-300 hover:text-fg data-[status=active]:text-fg data-[status=active]:after:scale-x-100";
 
 const TOOL_LINK =
   "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-sm px-2 text-sm text-muted transition-colors hover:text-fg";
@@ -51,7 +51,7 @@ function SignOutButton() {
 function DeskHeader() {
   const me = useQuery(meQuery);
   return (
-    <header className="border-b border-line">
+    <header className="sticky top-0 z-30 border-b border-line/70 bg-bg/85 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-8 gap-y-1 px-4 py-2 sm:px-6">
         <Mark />
         <nav aria-label="Desk" className="order-last w-full sm:order-none sm:w-auto">
@@ -90,7 +90,7 @@ function NetworkOffBanner() {
   const me = useQuery(meQuery);
   if (!me.data || me.data.networks_enabled.includes(me.data.merchant.network)) return null;
   return (
-    <div className="border-b border-warn/40">
+    <div className="border-b border-warn/40 bg-warn/5">
       <p className="mx-auto w-full max-w-6xl px-4 py-2 text-sm text-warn sm:px-6">
         This server has turned {me.data.merchant.network} off, so new invoices, jars and keys fail.{" "}
         <Link to="/desk/settings/address" className="text-fg underline underline-offset-4">

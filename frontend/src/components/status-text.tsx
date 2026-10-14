@@ -19,7 +19,7 @@ export function StatusText({ status, className }: { status: StatusLabel; classNa
         className,
       )}
     >
-      <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", DOT[status.tone])} />
+      <span aria-hidden className={cn("h-2.5 w-1 shrink-0 rounded-[1px]", DOT[status.tone])} />
       {status.label}
     </span>
   );

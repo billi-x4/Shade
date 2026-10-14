@@ -39,7 +39,7 @@ export function invoiceStatus(
       }
       return { label: "Paid", tone: "ok" };
     case "paid_unverified":
-      return { label: "Unverified — payer reported a transaction", tone: "warn" };
+      return { label: "Unverified · the payer sent a transaction id", tone: "warn" };
     case "authorized":
       return { label: "Jar charge", tone: "neutral" };
     case "expired":
@@ -131,7 +131,7 @@ export function deliveryErrorLabel(error: string): string {
 }
 
 export function endpointDisabledLabel(reason: string | null): string {
-  if (reason === "gone_410") return "Turned off: your server answered 410 Gone.";
+  if (reason === "gone_410") return "Turned off because your server answered 410 Gone.";
   if (reason === "failing")
     return "Turned off after failing for 3 days. Deliveries already queued keep retrying.";
   return "Turned off.";
@@ -157,7 +157,7 @@ export function scanErrorLabel(code: ScanErrorCode): string {
     case "scan_failed":
       return "The last scan failed. Shade will retry.";
     case "key_unavailable":
-      return "Shade cannot open this key. Upload it again under “Replace this key”; scan progress is kept. If that does not help, the Shade server’s detection setup needs fixing.";
+      return `Shade cannot open this key. Upload it again under "Replace this key". Your scan progress stays. If that does not fix it, the server's detection setup needs fixing.`;
     case "scanner_unsupported_upgrade":
       return "Shade's scanner cannot read payments made since the latest network upgrade yet. Until it is updated, check your wallet and use Record payment on each paid invoice.";
     case "ambiguous_match":

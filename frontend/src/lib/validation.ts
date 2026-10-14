@@ -145,7 +145,7 @@ export function checkAddressInput(raw: string, network: "testnet" | "mainnet"): 
     return "That is a spending key. Never share it. Copy the receive address instead.";
   }
   if (/^(uview|uivk)/.test(value)) {
-    return "That is a viewing key. Upload it under Detection; paste an address here.";
+    return "That is a viewing key. Upload it under Detection, and paste an address here.";
   }
   const prefix = network === "testnet" ? "utest1" : "u1";
   if (!value.startsWith(prefix)) {

@@ -1,36 +1,49 @@
 @import "tailwindcss";
 
+/*
+ * Shade's look: light through the blinds. Night ink is the private side (pay page, desk); a warm
+ * gold, the light that leaks through horizontal slats, marks actions, focus and the one lit line.
+ * The paper theme (.theme-paper) is the proof side: the auditor's receipt view.
+ *
+ * Contrast (WCAG): fg, muted and faint are >= 4.5:1 on bg, surface and surface-2; line-strong is
+ * >= 3:1 on all three (control edges, 1.4.11); accent on bg and on-accent on accent are >= 7:1.
+ */
 @theme {
-  --color-bg: #0e0e10;
-  --color-surface: #161618;
-  --color-surface-2: #1c1c20;
-  --color-fg: #f4f3f1;
-  --color-muted: #a7aab4;
-  --color-faint: #8d8f98;
-  /* Decorative dividers only (1.4:1). Never the only edge of a control. */
-  --color-line: #2c2c31;
-  /* Control and panel edges: >= 3.3:1 on bg, surface and surface-2 (WCAG 1.4.11). */
-  --color-line-strong: #6b6e79;
-  --color-paper: #f4f3f1;
-  --color-ink: #0e0e10;
-  --color-ok: #9dceba;
-  --color-warn: #e0c09a;
-  --color-bad: #e7b1b1;
+  --color-bg: #0a0b0e;
+  --color-surface: #111319;
+  --color-surface-2: #181b23;
+  --color-fg: #f3eee3;
+  --color-muted: #b3ad9f;
+  --color-faint: #8f8a7e;
+  /* Decorative dividers only. Never the only edge of a control. */
+  --color-line: #252932;
+  --color-line-strong: #6f6b62;
+  /* Interactive accent (primary buttons, focus, active nav) and the text that sits on it. */
+  --color-accent: #f6c552;
+  --color-on-accent: #0a0b0e;
+  /* Decorative light: blinds, slats, the wordmark's lit bar. */
+  --color-glow: #f6c552;
+  --color-paper: #f4eee0;
+  --color-ink: #0a0b0e;
+  --color-ok: #8fdbb3;
+  --color-warn: #f2a66c;
+  --color-bad: #f2948b;
 
-  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Newsreader Variable", "Iowan Old Style", Palatino, Georgia, serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+  --font-display: "Bricolage Grotesque Variable", "Arial Narrow", ui-sans-serif, sans-serif;
+  --font-sans: "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    "Martian Mono Variable", ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, monospace;
 
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.875rem;
 
   --ease-curtain: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
   :root {
-    --focus-ring: var(--color-paper);
+    --focus-ring: var(--color-accent);
   }
 
   html {
@@ -46,8 +59,20 @@
     background: var(--color-bg);
     color: var(--color-fg);
     font-family: var(--font-sans);
-    line-height: 1.55;
+    font-size: 1rem;
+    line-height: 1.6;
     text-wrap: pretty;
+  }
+
+  /* Film grain over the whole page: night ink with a little texture, never flat black. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   h1,
@@ -56,9 +81,16 @@
     text-wrap: balance;
   }
 
+  /* Display type: Bricolage, condensed and heavy, like slats of a blind. */
+  .font-display {
+    font-stretch: 82%;
+    font-weight: 680;
+    letter-spacing: -0.018em;
+  }
+
   ::selection {
-    background: var(--color-paper);
-    color: var(--color-ink);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
   }
 
   button:not(:disabled),
@@ -66,7 +98,7 @@
     cursor: pointer;
   }
 
-  /* One focus treatment everywhere; paper surfaces flip the ring to ink. */
+  /* One focus treatment everywhere; paper surfaces swap the ring color through --focus-ring. */
   :focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
@@ -78,8 +110,11 @@
 
   code,
   kbd,
-  pre {
+  pre,
+  samp {
     font-family: var(--font-mono);
+    font-stretch: 90%;
+    font-size: 0.92em;
   }
 
   dialog {
@@ -87,8 +122,31 @@
   }
 
   dialog::backdrop {
-    background: rgb(5 5 6 / 0.78);
+    background: rgb(4 5 7 / 0.8);
+    backdrop-filter: blur(3px);
   }
+}
+
+/* The proof side: warm paper, ink type. Redefines the tokens for everything inside it. */
+.theme-paper {
+  color-scheme: light;
+  --color-bg: #f4eee0;
+  --color-surface: #ece4d2;
+  --color-surface-2: #e4dac4;
+  --color-fg: #16140f;
+  --color-muted: #4e493f;
+  --color-faint: #5f5a52;
+  --color-line: #d8cfba;
+  --color-line-strong: #7a7366;
+  --color-accent: #16140f;
+  --color-on-accent: #f4eee0;
+  --color-glow: #dd9f2c;
+  --color-ok: #1f6b45;
+  --color-warn: #8a4b12;
+  --color-bad: #9b2c25;
+  --focus-ring: #16140f;
+  background: var(--color-bg);
+  color: var(--color-fg);
 }
 
 @utility on-paper {
@@ -105,29 +163,63 @@
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
 }
 
-/* The curtain seam: the one orchestrated motion on the site (landing hero). */
-.seam {
-  transform-origin: top;
-  animation: seam-draw 900ms var(--ease-curtain) both;
+/*
+ * Light through horizontal slats. --slat sets the slat height; the gap is a little wider than the
+ * slat. Pair with blinds-fade to let the light fall off like a beam.
+ */
+@utility blinds {
+  --slat: 0.7rem;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--color-glow) 92%, transparent) 0 var(--slat),
+    transparent var(--slat) calc(var(--slat) * 2.15)
+  );
 }
 
-.seam-reveal {
-  animation: seam-reveal 700ms var(--ease-curtain) 250ms both;
+@utility blinds-fade {
+  mask-image: linear-gradient(100deg, black 0%, rgb(0 0 0 / 0.55) 45%, transparent 85%);
 }
 
-@keyframes seam-draw {
+/* A thin rule made of three slats: section dividers and the wordmark echo. */
+@utility slat-rule {
+  height: 0.6rem;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-line-strong) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+/*
+ * Motion. One orchestrated moment per page: slats open (staggered by --i), then content rises.
+ * Everything collapses to an instant change under prefers-reduced-motion (below).
+ */
+.slat-open {
+  transform-origin: 0 50%;
+  animation: slat-open 900ms var(--ease-curtain) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes slat-open {
   from {
-    transform: scaleY(0);
+    transform: scaleX(0);
+    opacity: 0;
   }
   to {
-    transform: scaleY(1);
+    transform: none;
+    opacity: 1;
   }
 }
 
-@keyframes seam-reveal {
+.rise {
+  animation: rise 800ms var(--ease-curtain) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 150ms);
+}
+
+@keyframes rise {
   from {
     opacity: 0;
-    transform: translateX(-6px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -135,14 +227,54 @@
   }
 }
 
+/* The lit moment: a short glow when something becomes true (an invoice turns Paid). */
+.lit {
+  animation: lit 1400ms var(--ease-curtain) both;
+}
+
+@keyframes lit {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-ok) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 1.25rem transparent;
+  }
+}
+
+/* Primary buttons: a band of light sweeps across on hover. */
+.sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sheen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.38) 50%,
+    transparent 70%
+  );
+  transform: translateX(-110%);
+  transition: transform 650ms var(--ease-curtain);
+}
+
+.sheen:hover::before {
+  transform: translateX(110%);
+}
+
 dialog[open] {
-  animation: dialog-in 160ms var(--ease-curtain);
+  animation: dialog-in 180ms var(--ease-curtain);
 }
 
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px) scale(0.99);
   }
   to {
     opacity: 1;
@@ -150,23 +282,33 @@ dialog[open] {
   }
 }
 
+/* Loading rows: slats that shimmer. */
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--color-surface) 0%,
-    var(--color-surface-2) 50%,
-    var(--color-surface) 100%
-  );
-  background-size: 200% 100%;
+  background-color: var(--color-surface);
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0 6px, var(--color-bg) 6px 9px),
+    linear-gradient(
+      90deg,
+      var(--color-surface) 0%,
+      var(--color-surface-2) 50%,
+      var(--color-surface) 100%
+    );
+  background-size:
+    100% 100%,
+    200% 100%;
   animation: shimmer 1.6s linear infinite;
 }
 
 @keyframes shimmer {
   from {
-    background-position: 200% 0;
+    background-position:
+      0 0,
+      200% 0;
   }
   to {
-    background-position: -200% 0;
+    background-position:
+      0 0,
+      -200% 0;
   }
 }
 

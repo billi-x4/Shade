@@ -47,7 +47,7 @@ export function ConfirmDialog({
       initialFocus={cancelRef}
     >
       <div className="space-y-4 p-6">
-        <h2 id={titleId} className="font-serif text-2xl leading-tight">
+        <h2 id={titleId} className="font-display text-2xl leading-tight">
           {title}
         </h2>
         <div id={bodyId} className="space-y-2 text-sm text-muted">

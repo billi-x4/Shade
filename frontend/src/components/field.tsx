@@ -56,7 +56,7 @@ export function Field({
 }
 
 const CONTROL =
-  "w-full rounded-sm border border-line-strong bg-bg px-3 text-base text-fg placeholder:text-faint aria-invalid:border-bad sm:text-sm disabled:opacity-50";
+  "w-full rounded-sm border border-line-strong bg-surface px-3 text-base text-fg transition-colors placeholder:text-faint hover:border-fg/50 focus-visible:border-accent aria-invalid:border-bad sm:text-sm disabled:opacity-50";
 
 export function TextInput({ className, ...props }: ComponentProps<"input">) {
   return <input className={cn(CONTROL, "min-h-11", className)} {...props} />;
@@ -81,7 +81,7 @@ export function Checkbox({
       <input
         id={id}
         type="checkbox"
-        className="mt-0.5 size-5 shrink-0 accent-paper"
+        className="mt-0.5 size-5 shrink-0 accent-[var(--color-accent)]"
         aria-describedby={hint ? `${id}-hint` : undefined}
         {...props}
       />

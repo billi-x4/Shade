@@ -34,7 +34,7 @@ describe("invoiceStatus", () => {
     ],
     [
       { status: "paid_unverified", verification: "txid_unverified", detection: null },
-      "Unverified — payer reported a transaction",
+      "Unverified · the payer sent a transaction id",
       "warn",
     ],
     [

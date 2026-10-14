@@ -1,5 +1,6 @@
-import "@fontsource-variable/figtree";
-import "@fontsource-variable/newsreader/opsz.css";
+import "@fontsource-variable/bricolage-grotesque/standard.css";
+import "@fontsource-variable/instrument-sans/standard.css";
+import "@fontsource-variable/martian-mono/standard.css";
 import "./styles.css";
 
 import { QueryClientProvider } from "@tanstack/react-query";

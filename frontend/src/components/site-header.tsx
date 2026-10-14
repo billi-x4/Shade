@@ -3,10 +3,11 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { sessionQuery } from "@/api/session";
 import { buttonClass } from "@/components/button-styles";
-import { Mark } from "@/components/mark";
+import { BlindGlyph, Mark } from "@/components/mark";
 import { cn } from "@/lib/cn";
 
-const NAV_LINK = "inline-flex min-h-11 items-center px-2 text-sm text-muted hover:text-fg";
+const NAV_LINK =
+  "inline-flex min-h-11 items-center px-2 text-sm text-muted transition-colors hover:text-fg";
 
 function AccountLinks() {
   const session = useQuery(sessionQuery);
@@ -32,24 +33,64 @@ function AccountLinks() {
 /** Header for public pages. `minimal` (pay and grant views) shows only the mark: payers need no desk links. */
 export function SiteHeader({ minimal = false }: { minimal?: boolean }) {
   return (
-    <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-4 sm:px-6">
-      <Mark />
-      {minimal ? null : (
-        <nav aria-label="Site" className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <Link to="/docs" className={NAV_LINK} activeProps={{ className: "text-fg" }}>
-            API
-          </Link>
-          <AccountLinks />
-        </nav>
-      )}
+    <header className="sticky top-0 z-30 border-b border-line/70 bg-bg/80 backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-2 sm:px-6">
+        <Mark />
+        {minimal ? null : (
+          <nav aria-label="Site" className="flex flex-wrap items-center gap-x-1 gap-y-1">
+            <Link
+              to="/docs"
+              className={NAV_LINK}
+              activeProps={{ className: "text-fg underline decoration-accent underline-offset-8" }}
+            >
+              API docs
+            </Link>
+            <AccountLinks />
+          </nav>
+        )}
+      </div>
     </header>
   );
 }
 
+const FOOTER_LINK =
+  "inline-flex min-h-11 items-center text-muted underline-offset-4 transition-colors hover:text-fg hover:underline";
+
 export function SiteFooter() {
   return (
-    <footer className="mx-auto w-full max-w-6xl border-t border-line px-4 py-8 text-sm text-faint sm:px-6">
-      <p>Shade is not a wallet. It never holds a seed or a spending key. ZEC only.</p>
+    <footer className="border-t border-line">
+      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:px-6">
+        <div className="max-w-md space-y-3">
+          <p className="flex items-center gap-2.5 font-display text-xl text-fg">
+            <BlindGlyph />
+            Shade
+          </p>
+          <p className="text-muted">
+            Shade is not a wallet. It never holds a seed or a spending key. ZEC only.
+          </p>
+        </div>
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-6 sm:flex-col sm:gap-0">
+          <Link to="/docs" className={FOOTER_LINK}>
+            API docs
+          </Link>
+          <a
+            href="https://www.npmjs.com/package/shade-zcash-sdk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={FOOTER_LINK}
+          >
+            npm package<span className="sr-only"> (opens in a new tab)</span>
+          </a>
+          <a
+            href="https://github.com/billi-x4/Shade"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={FOOTER_LINK}
+          >
+            Source on GitHub<span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </nav>
+      </div>
     </footer>
   );
 }
@@ -86,7 +127,7 @@ export function SkipLink() {
         event.preventDefault();
         document.getElementById("main")?.focus();
       }}
-      className="sr-only z-50 rounded-sm bg-paper px-4 py-3 text-sm font-medium text-ink focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      className="sr-only z-50 rounded-sm bg-accent px-4 py-3 text-sm font-semibold text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
     >
       Skip to content
     </a>

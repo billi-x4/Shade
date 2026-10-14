@@ -14,10 +14,11 @@ export function DeskPage({
 }) {
   useDocumentTitle(title);
   return (
-    <div className="space-y-8">
-      <div className="max-w-2xl space-y-2">
-        <h1 className="font-serif text-4xl leading-tight sm:text-5xl">{title}</h1>
-        {intro ? <p className="text-muted">{intro}</p> : null}
+    <div className="space-y-10">
+      <div className="max-w-2xl space-y-3">
+        <span aria-hidden className="slat-open block h-1 w-12 rounded-[1px] bg-glow" />
+        <h1 className="font-display text-5xl leading-[0.95] sm:text-6xl">{title}</h1>
+        {intro ? <p className="text-lg text-muted">{intro}</p> : null}
       </div>
       {children}
     </div>
@@ -37,11 +38,11 @@ export function Panel({
   return (
     <section
       className={cn(
-        "h-fit space-y-4 rounded-md border border-line-strong bg-surface p-5",
+        "h-fit space-y-4 rounded-lg border border-line-strong bg-surface p-5 sm:p-6",
         className,
       )}
     >
-      <h2 className="font-serif text-2xl">{title}</h2>
+      <h2 className="font-display text-2xl">{title}</h2>
       {children}
     </section>
   );

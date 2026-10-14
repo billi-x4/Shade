@@ -127,7 +127,7 @@ export function Modal({
         if (event.key === "Escape") dismiss(event);
       }}
       className={cn(
-        "m-auto max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100%-2rem))] overflow-y-auto rounded-md border border-line-strong bg-surface p-0 text-fg shadow-2xl shadow-black/60",
+        "m-auto max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100%-2rem))] overflow-y-auto rounded-lg border border-line-strong bg-surface p-0 text-fg shadow-[0_30px_80px_-20px_rgb(0_0_0/0.8)]",
         className,
       )}
     >

@@ -35,7 +35,7 @@ export function ErrorState({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-sm border border-bad/50 p-5", className)}>
+    <div className={cn("rounded-md border border-bad/50 bg-bad/5 p-5", className)}>
       <p className="font-medium text-fg">{title}</p>
       <p className="mt-1 text-sm text-muted">{errorMessage(error)}</p>
       {onRetry ? (
@@ -79,9 +79,15 @@ export function RefreshError({
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="border-y border-line py-10">
-      <p className="font-serif text-xl">{title}</p>
-      {children ? <div className="mt-2 max-w-prose text-sm text-muted">{children}</div> : null}
+    <div className="relative overflow-hidden rounded-md border border-dashed border-line-strong px-6 py-10">
+      <span
+        aria-hidden
+        className="blinds blinds-fade pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-[0.07]"
+      />
+      <p className="relative font-display text-2xl">{title}</p>
+      {children ? (
+        <div className="relative mt-2 max-w-prose text-sm text-muted">{children}</div>
+      ) : null}
     </div>
   );
 }
