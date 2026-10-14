@@ -1032,9 +1032,10 @@ plan limits do not fit). Region: next to the database (`us-east4-eqdc4a` for Neo
 - **From GitHub** (the live deploy):
   `railway add --service api --repo billi-x4/Shade --branch main --variables RAILWAY_DOCKERFILE_PATH=backend/Dockerfile`
   (the same for `worker`). Its first build fails until the variables and the patch below are applied. The created
-  source records only the repo, so pushes deploy nothing; set the branch in the patch
-  (`"source":{"repo":"billi-x4/Shade","branch":"main"}`), which also builds the latest commit.
-  `railway redeploy` reruns the latest deployment's commit; it never picks up a newer one.
+  source records only the repo; setting the branch in the patch (`"source":{"repo":"billi-x4/Shade","branch":"main"}`)
+  built the latest commit. On 2026-10-14 pushes to `main` still started no build: that needs Railway's GitHub App to
+  have access to the repo (GitHub → Settings → Applications). Until then, ship a newer commit with the dashboard's
+  deploy button or `railway up` from a clean checkout. `railway redeploy` reruns the latest deployment's commit.
 
 - **No `railway.json`/`railway.toml`:** Railway closed Config as Code to new services (it stops reading those files on
   2026-12-01), so a committed file would be ignored. Service settings are an environment patch applied with the CLI.
