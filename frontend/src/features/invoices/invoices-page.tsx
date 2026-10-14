@@ -2,11 +2,11 @@ import type { Invoice, Network, Page } from "@shade/contract";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useAppConfig } from "@/api/config";
 import { invoicesQuery, meQuery, viewingKeysQuery, type InvoiceFilter } from "@/api/desk";
 import { Button } from "@/components/button";
-import { Field, Select } from "@/components/field";
+import { Select } from "@/components/field";
 import { focusPageStart } from "@/components/page-focus";
 import { EmptyState, ErrorState, LoadingState, RefreshError } from "@/components/states";
 import { DeskPage, Panel, SplitLayout } from "@/features/desk/desk-page";
@@ -75,15 +75,24 @@ function DetectionOffNotice({ network }: { network: Network }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-sm border border-warn/50 px-4 py-2 text-sm">
-      <p className="min-w-0 flex-1 basis-72 py-2">
-        <span className="text-warn">Automatic detection is off on {network}.</span> Invoices stay
-        unpaid until you confirm a payment by hand.{" "}
-        <Link to="/desk/settings/detection" className="text-fg underline underline-offset-4">
+    <div className="relative flex flex-wrap items-center justify-between gap-x-6 gap-y-1 overflow-hidden rounded-md border border-warn/50 bg-warn/[0.04] py-2 pr-2 pl-6">
+      {/* Three warn slats: the blind is down on this network. */}
+      <span aria-hidden className="absolute top-1/2 left-2.5 grid -translate-y-1/2 gap-[3px]">
+        <span className="h-[3px] w-1.5 rounded-[1px] bg-warn" />
+        <span className="h-[3px] w-1.5 rounded-[1px] bg-warn" />
+        <span className="h-[3px] w-1.5 rounded-[1px] bg-warn" />
+      </span>
+      <p className="min-w-0 flex-1 basis-72 py-2 text-sm text-muted">
+        <span className="font-medium text-warn">Automatic detection is off on {network}.</span>{" "}
+        Invoices stay unpaid until you confirm a payment by hand.{" "}
+        <Link
+          to="/desk/settings/detection"
+          className="font-medium text-fg underline underline-offset-4"
+        >
           Turn on detection
         </Link>
       </p>
-      <Button variant="quiet" className="px-2" onClick={dismiss}>
+      <Button variant="quiet" className="px-3" onClick={dismiss}>
         Don't show again
       </Button>
     </div>
@@ -118,11 +127,15 @@ function InvoiceList({ filter }: { filter: InvoiceFilter }) {
     return (
       <div className="space-y-4">
         {stale}
-        <EmptyState title={filter === "all" ? "No invoices yet." : "Nothing here."}>
-          {filter === "all"
-            ? "Create one with the form. You get a pay link and a QR the payer's wallet understands."
-            : "No invoices match this filter."}
-        </EmptyState>
+        {filter === "all" ? (
+          <EmptyState title="No invoices yet.">
+            Create one with the form. You get a pay link and a QR code the payer's wallet reads.
+          </EmptyState>
+        ) : (
+          <EmptyState title="Nothing here.">
+            No invoices have this status. Choose All invoices to see every one.
+          </EmptyState>
+        )}
       </div>
     );
   }
@@ -131,7 +144,8 @@ function InvoiceList({ filter }: { filter: InvoiceFilter }) {
   return (
     <div className="space-y-4">
       {stale}
-      <ul className="divide-y divide-line border-y border-line">
+      {/* A grid with one subgrid row per invoice, so the amount column lines up down the list. */}
+      <ul className="divide-y divide-line border-b border-line sm:grid sm:grid-cols-[fit-content(15rem)_minmax(0,1fr)] sm:gap-x-6">
         {invoices.map((invoice) => (
           <InvoiceRow key={invoice.id} invoice={invoice} explorerTemplate={explorer} />
         ))}
@@ -152,13 +166,14 @@ function InvoiceList({ filter }: { filter: InvoiceFilter }) {
 export function InvoicesPage() {
   const me = useQuery(meQuery);
   const [filter, setFilter] = useState<InvoiceFilter>("all");
+  const filterId = useId();
   const network = me.data?.merchant.network;
   const noAddress = me.data ? !me.data.merchant.receive_addresses[me.data.merchant.network] : false;
 
   return (
     <DeskPage
       title="Invoices"
-      intro="A bill for an exact amount of ZEC. It stays unpaid until a wallet scan finds the payment or you confirm it yourself."
+      intro="Ask for an exact amount of ZEC. The invoice turns paid when a wallet scan finds the payment, or when you confirm it."
     >
       {network && !noAddress ? <DetectionOffNotice key={network} network={network} /> : null}
       <SplitLayout
@@ -176,7 +191,7 @@ export function InvoicesPage() {
                 addressLink={
                   <Link
                     to="/desk/settings/address"
-                    className="inline-flex min-h-11 items-center text-fg underline underline-offset-4"
+                    className="inline-flex min-h-11 items-center font-medium text-fg underline underline-offset-4"
                   >
                     Add a {network} receive address
                   </Link>
@@ -186,25 +201,30 @@ export function InvoicesPage() {
           </Panel>
         }
       >
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 className="font-serif text-2xl">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line-strong pb-4">
+          <h2 className="font-display text-3xl leading-none">
             {network === "mainnet" ? "Mainnet invoices" : "Testnet invoices"}
           </h2>
-          <Field label="Show" className="w-full sm:w-56">
-            {(control) => (
-              <Select
-                {...control}
-                value={filter}
-                onChange={(event) => setFilter(event.target.value as InvoiceFilter)}
-              >
-                {FILTERS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </Field>
+          <div className="flex w-full items-center gap-3 sm:w-auto">
+            <label
+              htmlFor={filterId}
+              className="font-mono text-[0.7rem] tracking-[0.14em] text-faint uppercase"
+            >
+              Show
+            </label>
+            <Select
+              id={filterId}
+              className="min-w-0 flex-1 sm:w-52 sm:flex-none"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as InvoiceFilter)}
+            >
+              {FILTERS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
         <InvoiceList filter={filter} />
       </SplitLayout>

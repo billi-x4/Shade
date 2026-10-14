@@ -1,11 +1,13 @@
 import { COPY } from "@shade/contract";
 import type { Invoice } from "@shade/contract";
+import { ExternalLink } from "lucide-react";
 import { useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { ApiError } from "@/api/client";
 import { createInvoice } from "@/api/desk";
 import { qk } from "@/api/keys";
 import { Button } from "@/components/button";
+import { buttonClass } from "@/components/button-styles";
 import { CopyButton } from "@/components/copy-button";
 import { Field, Select, TextInput } from "@/components/field";
 import { ActionStatus } from "@/features/desk/action-status";
@@ -81,7 +83,7 @@ export function InvoiceForm({
 
   if (noAddress) {
     return (
-      <div className="space-y-3 text-sm">
+      <div className="space-y-2 rounded-sm border border-warn/50 bg-warn/[0.04] p-4 text-sm">
         <p className="text-warn">{COPY.noAddress}</p>
         {addressLink}
       </div>
@@ -93,27 +95,36 @@ export function InvoiceForm({
     <form className="space-y-5" onSubmit={onSubmit} noValidate>
       <Field label="Amount (ZEC)" error={fieldError("amount")}>
         {(control) => (
-          <TextInput
-            {...control}
-            ref={refs.amount}
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="0.01"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-          />
+          <div className="relative">
+            <TextInput
+              {...control}
+              ref={refs.amount}
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0.01"
+              className="h-16 pr-14 font-display text-4xl tabular sm:text-4xl"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-mono text-xs text-faint"
+            >
+              ZEC
+            </span>
+          </div>
         )}
       </Field>
       <Field
         label="Memo"
-        hint="The payer's wallet writes it on chain, with a short Shade reference added."
+        hint="The payer's wallet writes this on chain. Shade adds a short reference to it."
         error={fieldError("memo")}
         aside={
           <span
             className={
               memoBytes > MERCHANT_MEMO_MAX_BYTES
-                ? "text-xs text-bad tabular"
-                : "text-xs text-faint tabular"
+                ? "font-mono text-[0.7rem] text-bad tabular"
+                : "font-mono text-[0.7rem] text-faint tabular"
             }
           >
             {memoBytes}/{MERCHANT_MEMO_MAX_BYTES} bytes
@@ -126,6 +137,7 @@ export function InvoiceForm({
             ref={refs.memo}
             autoComplete="off"
             placeholder="Order 1042"
+            className="font-mono"
             value={memo}
             onChange={(event) => setMemo(event.target.value)}
           />
@@ -133,7 +145,7 @@ export function InvoiceForm({
       </Field>
       <Field
         label="Label (for grants)"
-        hint="Optional. Grants can share only invoices with this label, like payroll."
+        hint="Optional. A grant can share only the invoices with one label, like payroll."
         error={fieldError("tag")}
       >
         {(control) => (
@@ -144,6 +156,7 @@ export function InvoiceForm({
             autoCapitalize="off"
             spellCheck={false}
             placeholder="payroll"
+            className="font-mono"
             value={tag}
             onChange={(event) => setTag(event.target.value)}
           />
@@ -169,9 +182,12 @@ export function InvoiceForm({
       </Button>
       {serverField ? null : <ActionStatus mutation={mutation} />}
       {created?.pay_url ? (
-        <div className="space-y-3 border-t border-line pt-4 text-sm">
+        <div className="lit space-y-3 rounded-md border border-ok/50 bg-ok/[0.04] p-4 text-sm">
           <p className="text-ok">
             Invoice for {created.amount_zec} ZEC created. Send the payer this link.
+          </p>
+          <p className="font-mono text-[0.7rem] leading-relaxed text-muted wrap-anywhere">
+            {created.pay_url}
           </p>
           <div className="flex flex-wrap gap-2">
             <CopyButton value={created.pay_url} label="Copy pay link" />
@@ -179,9 +195,10 @@ export function InvoiceForm({
               href={created.pay_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center px-2 text-muted underline underline-offset-4 hover:text-fg"
+              className={buttonClass("quiet", "px-2.5")}
             >
               Open pay page
+              <ExternalLink aria-hidden size={14} strokeWidth={1.75} />
               <span className="sr-only"> (opens in a new tab)</span>
             </a>
           </div>

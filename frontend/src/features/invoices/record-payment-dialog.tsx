@@ -13,7 +13,28 @@ import { Field, TextInput } from "@/components/field";
 import { Modal } from "@/components/modal";
 import { normalizeTxid } from "@/lib/validation";
 
-const FORMAT = "A transaction id is 64 characters, 0–9 and a–f. Copy it again from your wallet.";
+const FORMAT =
+  "A transaction id is 64 characters, digits and the letters a to f. Copy it again from your wallet.";
+
+const EYEBROW = "font-mono text-[0.7rem] uppercase tracking-[0.14em] text-faint";
+
+/**
+ * What the merchant's wallet must show before they settle an invoice by hand: the amount and the
+ * exact memo the payer's wallet wrote on chain. Shade cannot see either, so the merchant checks.
+ */
+export function WalletCheck({ invoice }: { invoice: Pick<Invoice, "amount_zec" | "chain_memo"> }) {
+  return (
+    <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-x-4 gap-y-3 rounded-sm border border-line-strong bg-bg p-4">
+      <dt className={EYEBROW}>Amount</dt>
+      <dd className="font-display text-3xl leading-none text-fg tabular">
+        {invoice.amount_zec}
+        <span className="ml-1.5 font-mono text-xs font-normal text-faint">ZEC</span>
+      </dd>
+      <dt className={EYEBROW}>Memo</dt>
+      <dd className="font-mono text-sm text-fg wrap-anywhere">{invoice.chain_memo}</dd>
+    </dl>
+  );
+}
 
 export function RecordPaymentDialog({
   invoice,
@@ -56,21 +77,19 @@ export function RecordPaymentDialog({
       describedBy={bodyId}
       initialFocus={inputRef}
     >
-      <form className="space-y-4 p-6" onSubmit={onSubmit} noValidate>
-        <h2 id={titleId} className="font-serif text-2xl leading-tight">
+      <form className="space-y-5 p-6" onSubmit={onSubmit} noValidate>
+        <h2 id={titleId} className="font-display text-2xl leading-tight">
           Record a payment from your wallet
         </h2>
-        <div id={bodyId} className="space-y-2 text-sm text-muted">
+        <div id={bodyId} className="space-y-3 text-sm text-muted">
+          <p>Record it only if your wallet shows this payment:</p>
+          <WalletCheck invoice={invoice} />
           <p>
-            Only if your wallet shows {invoice.amount_zec} ZEC with the memo{" "}
-            <span className="wrap-anywhere text-fg">“{invoice.chain_memo}”</span>.
-          </p>
-          <p>
-            Shade checks the transaction is shielded, newer than this invoice and mined, then marks
-            the invoice paid and tells your server. This cannot be undone.
+            Shade then checks that the transaction is shielded, newer than this invoice and mined.
+            It marks the invoice paid and sends invoice.paid to your server. You cannot undo this.
           </p>
           {invoice.status === "expired" ? (
-            <p>
+            <p className="text-warn">
               This invoice has expired. Shade records the payment only if it was mined within an
               hour after the invoice expired.
             </p>
@@ -91,7 +110,7 @@ export function RecordPaymentDialog({
             />
           )}
         </Field>
-        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
           <Button
             variant="ghost"
             onClick={pending ? undefined : onCancel}

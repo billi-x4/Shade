@@ -1,6 +1,7 @@
 import type { Page, WebhookDelivery, WebhookEndpoint } from "@shade/contract";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
+import { Send } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError, errorMessage } from "@/api/client";
@@ -21,10 +22,17 @@ import { ActionStatus } from "@/features/desk/action-status";
 import { useRevealSecret } from "@/features/desk/desk-context";
 import { DeskPage, Panel, SplitLayout } from "@/features/desk/desk-page";
 import { useDeskMutation } from "@/features/desk/use-desk-mutation";
+import { cn } from "@/lib/cn";
 import { formatDateTime, formatRelative, plural } from "@/lib/format";
 import { useNow } from "@/lib/hooks";
 import { deliveryErrorLabel, deliveryStatus, endpointDisabledLabel } from "@/lib/status";
 import { checkWebhookUrl } from "@/lib/validation";
+
+const EYEBROW = "font-mono text-[0.7rem] uppercase tracking-[0.14em] text-faint";
+
+/** Section heading of the list column, with its count or controls on the right. */
+const SECTION_HEAD =
+  "flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line-strong pb-4";
 
 function EndpointForm() {
   const reveal = useRevealSecret();
@@ -34,7 +42,7 @@ function EndpointForm() {
   const mutation = useDeskMutation({
     mutationFn: createWebhook,
     invalidate: () => [qk.webhooks],
-    success: () => "Endpoint added. Copy its signing secret now; Shade shows it once.",
+    success: () => "Endpoint added. Copy its signing secret now. Shade shows it once.",
     onSuccess: (endpoint) => {
       setUrl("");
       reveal({
@@ -85,7 +93,7 @@ function EndpointForm() {
     <form className="space-y-5" onSubmit={onSubmit} noValidate>
       <Field
         label="Endpoint URL"
-        hint="A public https URL on your server. Shade posts invoice.paid there, signed."
+        hint="A public https URL on your server. Shade sends signed invoice.paid events to it."
         error={error ?? serverError}
       >
         {(control) => (
@@ -97,6 +105,7 @@ function EndpointForm() {
             autoComplete="off"
             spellCheck={false}
             placeholder="https://shop.example/hooks/shade"
+            className="font-mono"
             value={url}
             onChange={(event) => setUrl(event.target.value)}
           />
@@ -120,25 +129,47 @@ function EndpointRow({ endpoint, now }: { endpoint: WebhookEndpoint; now: number
   });
   const disabled = endpoint.disabled_at !== null;
   return (
-    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 py-5">
-      <div className="min-w-0 space-y-1">
-        <p className="font-mono text-sm wrap-anywhere">{endpoint.url}</p>
-        <p className="text-sm text-faint">
+    <li className="grid gap-x-6 gap-y-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+      <div className="min-w-0 space-y-1.5">
+        <p className={cn("font-mono text-sm wrap-anywhere", disabled ? "text-muted" : "text-fg")}>
+          {endpoint.url}
+        </p>
+        <p className="font-mono text-[0.7rem] text-faint">
           Secret ends in <code className="text-muted">{endpoint.secret_hint}</code>
           {" · "}
           {endpoint.last_delivery_at
             ? `Last delivery ${formatRelative(endpoint.last_delivery_at, now)}`
             : "No deliveries yet"}
-          {endpoint.failure_count > 0
-            ? ` · ${plural(endpoint.failure_count, "failure")} in a row`
-            : null}
+          {endpoint.failure_count > 0 ? (
+            <span className="text-warn">
+              {` · ${plural(endpoint.failure_count, "failure")} in a row`}
+            </span>
+          ) : null}
         </p>
         {disabled ? (
           <p className="text-sm text-warn">{endpointDisabledLabel(endpoint.disabled_reason)}</p>
         ) : null}
         {confirming ? null : <ActionStatus mutation={mutation} />}
+        {confirming ? (
+          <ConfirmDialog
+            open
+            title="Delete this endpoint?"
+            confirmLabel="Delete endpoint"
+            pendingLabel="Deleting…"
+            pending={mutation.isPending}
+            error={mutation.isError ? errorMessage(mutation.error) : null}
+            onConfirm={() => mutation.mutate()}
+            onCancel={() => {
+              mutation.reset();
+              setConfirming(false);
+            }}
+          >
+            <p className="wrap-anywhere">Shade stops sending events to {endpoint.url}.</p>
+            <p>Shade cancels the deliveries still waiting for it. You cannot undo this.</p>
+          </ConfirmDialog>
+        ) : null}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 sm:justify-end">
         <StatusText
           status={disabled ? { label: "Off", tone: "muted" } : { label: "On", tone: "ok" }}
         />
@@ -146,51 +177,43 @@ function EndpointRow({ endpoint, now }: { endpoint: WebhookEndpoint; now: number
           Delete
         </Button>
       </div>
-      {confirming ? (
-        <ConfirmDialog
-          open
-          title="Delete this endpoint?"
-          confirmLabel="Delete endpoint"
-          pendingLabel="Deleting…"
-          pending={mutation.isPending}
-          error={mutation.isError ? errorMessage(mutation.error) : null}
-          onConfirm={() => mutation.mutate()}
-          onCancel={() => {
-            mutation.reset();
-            setConfirming(false);
-          }}
-        >
-          <p className="wrap-anywhere">Shade stops sending events to {endpoint.url}.</p>
-          <p>Deliveries still waiting for this endpoint are cancelled. This cannot be undone.</p>
-        </ConfirmDialog>
-      ) : null}
     </li>
   );
 }
 
+/** One line of the delivery log: when, what, where, and how the last attempt went. */
 function DeliveryRow({ delivery, now }: { delivery: WebhookDelivery; now: number }) {
   const status = deliveryStatus(delivery.status);
+  const when = formatRelative(delivery.created_at, now);
   return (
-    <li className="space-y-1 py-4 text-sm">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p>
-          <code className="text-fg">{delivery.event_type}</code>
-          <span className="text-faint"> · {formatRelative(delivery.created_at, now)}</span>
+    <li className="py-3 sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:gap-x-4">
+      <time
+        dateTime={delivery.created_at}
+        className="hidden pt-1 font-mono text-[0.7rem] text-faint tabular sm:block"
+      >
+        {when}
+      </time>
+      <div className="min-w-0 space-y-1 font-mono">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+          <p className="text-sm text-fg">
+            {delivery.event_type}
+            <span className="text-[0.7rem] text-faint sm:hidden"> · {when}</span>
+          </p>
+          <StatusText status={status} className="font-sans" />
+        </div>
+        <p className="text-[0.7rem] text-faint wrap-anywhere">{delivery.endpoint_url}</p>
+        <p className="text-[0.7rem] text-muted">
+          {plural(delivery.attempt, "attempt")}
+          {delivery.last_status_code ? ` · last answer HTTP ${delivery.last_status_code}` : null}
+          {delivery.delivered_at ? ` · delivered ${formatDateTime(delivery.delivered_at)}` : null}
+          {delivery.status === "failed" && delivery.next_attempt_at
+            ? ` · next try ${formatRelative(delivery.next_attempt_at, now)}`
+            : null}
         </p>
-        <StatusText status={status} />
+        {delivery.last_error && delivery.status !== "delivered" ? (
+          <p className="font-sans text-sm text-warn">{deliveryErrorLabel(delivery.last_error)}</p>
+        ) : null}
       </div>
-      <p className="font-mono text-xs text-faint wrap-anywhere">{delivery.endpoint_url}</p>
-      <p className="text-muted">
-        {plural(delivery.attempt, "attempt")}
-        {delivery.last_status_code ? ` · last answer HTTP ${delivery.last_status_code}` : null}
-        {delivery.delivered_at ? ` · delivered ${formatDateTime(delivery.delivered_at)}` : null}
-        {delivery.status === "failed" && delivery.next_attempt_at
-          ? ` · next try ${formatRelative(delivery.next_attempt_at, now)}`
-          : null}
-      </p>
-      {delivery.last_error && delivery.status !== "delivered" ? (
-        <p className="text-warn">{deliveryErrorLabel(delivery.last_error)}</p>
-      ) : null}
     </li>
   );
 }
@@ -229,7 +252,7 @@ function Deliveries() {
       <div className="space-y-4">
         {stale}
         <EmptyState title="No deliveries yet.">
-          Press Send test to check your endpoint end to end.
+          Press Send test. Shade sends a signed webhook.test event to each endpoint that is on.
         </EmptyState>
       </div>
     );
@@ -237,7 +260,7 @@ function Deliveries() {
   return (
     <div className="space-y-4">
       {stale}
-      <ul className="divide-y divide-line border-y border-line">
+      <ul className="divide-y divide-line border-b border-line">
         {items.map((delivery) => (
           <DeliveryRow key={delivery.id} delivery={delivery} now={now} />
         ))}
@@ -276,7 +299,7 @@ export function WebhooksPage() {
   return (
     <DeskPage
       title="Webhooks"
-      intro="Shade tells your server when an invoice is paid, with a signed invoice.paid event. Up to five endpoints per network."
+      intro="Shade posts a signed invoice.paid event to your server when an invoice is paid. You can add up to five endpoints per network."
     >
       <SplitLayout
         aside={
@@ -286,14 +309,22 @@ export function WebhooksPage() {
         }
       >
         <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-serif text-2xl">Endpoints</h2>
+          <div className={SECTION_HEAD}>
+            <div className="space-y-2">
+              <h2 className="font-display text-3xl leading-none">Endpoints</h2>
+              {endpoints.data?.length ? (
+                <p className={EYEBROW}>
+                  {active.length} on · {endpoints.data.length - active.length} off
+                </p>
+              ) : null}
+            </div>
             <Button
               variant="ghost"
               onClick={() => test.mutate()}
               disabled={test.isPending || active.length === 0}
               aria-describedby={testHint ? testHintId : undefined}
             >
+              <Send aria-hidden size={16} strokeWidth={1.75} />
               {test.isPending ? "Sending…" : "Send test"}
             </Button>
           </div>
@@ -319,18 +350,22 @@ export function WebhooksPage() {
             )
           ) : endpoints.data.length === 0 ? (
             <EmptyState title="No endpoints yet.">
-              Add your server's URL to get a signed event when an invoice is paid.
+              Add your server's URL. Shade then sends it a signed event each time an invoice is
+              paid.
             </EmptyState>
           ) : (
-            <ul className="divide-y divide-line border-y border-line">
+            <ul className="divide-y divide-line border-b border-line">
               {endpoints.data.map((endpoint) => (
                 <EndpointRow key={endpoint.id} endpoint={endpoint} now={now} />
               ))}
             </ul>
           )}
         </section>
-        <section className="space-y-4">
-          <h2 className="font-serif text-2xl">Deliveries</h2>
+        <section className="space-y-4 pt-4">
+          <div className={SECTION_HEAD}>
+            <h2 className="font-display text-3xl leading-none">Deliveries</h2>
+            <p className={EYEBROW}>Newest first</p>
+          </div>
           <Deliveries />
         </section>
       </SplitLayout>

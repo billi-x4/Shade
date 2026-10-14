@@ -2,8 +2,9 @@ import { COPY, jarSummaryCopy } from "@shade/contract";
 import type { Jar, JarCharge } from "@shade/contract";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import { ChevronRight, KeyRound } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { ApiError, errorMessage } from "@/api/client";
 import {
   cancelJarCharge,
@@ -26,6 +27,7 @@ import { ActionStatus } from "@/features/desk/action-status";
 import { useRevealSecret } from "@/features/desk/desk-context";
 import { DeskPage, Panel, SplitLayout } from "@/features/desk/desk-page";
 import { useDeskMutation } from "@/features/desk/use-desk-mutation";
+import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 import { checkAmount, checkLabel, zecToZat } from "@/lib/validation";
 
@@ -37,6 +39,8 @@ import { checkAmount, checkLabel, zecToZat } from "@/lib/validation";
  * per merchant).
  */
 const JAR_POLL_MS = 3_000;
+
+const EYEBROW = "font-mono text-[0.7rem] uppercase tracking-[0.14em] text-faint";
 
 /**
  * A copyable first charge for the agent's own code. The key stays in $SHADE_AGENT_KEY: the shown
@@ -86,15 +90,24 @@ function JarForm() {
         error={errors.cap ?? (serverError?.code === "BAD_AMOUNT" ? serverError.message : null)}
       >
         {(control) => (
-          <TextInput
-            {...control}
-            ref={capRef}
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="0.006"
-            value={cap}
-            onChange={(event) => setCap(event.target.value)}
-          />
+          <div className="relative">
+            <TextInput
+              {...control}
+              ref={capRef}
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0.006"
+              className="h-16 pr-14 font-display text-4xl tabular sm:text-4xl"
+              value={cap}
+              onChange={(event) => setCap(event.target.value)}
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-mono text-xs text-faint"
+            >
+              ZEC
+            </span>
+          </div>
         )}
       </Field>
       <Field
@@ -108,6 +121,7 @@ function JarForm() {
             ref={labelRef}
             autoComplete="off"
             placeholder="research-agent"
+            className="font-mono"
             value={label}
             onChange={(event) => setLabel(event.target.value)}
           />
@@ -128,24 +142,31 @@ function ChargeRow({ jar, charge }: { jar: Jar; charge: JarCharge }) {
   const mutation = useDeskMutation({
     mutationFn: () => cancelJarCharge(jar.id, charge.id),
     invalidate: () => [qk.jars, qk.jarCharges(jar.id)],
-    success: () => `Charge of ${charge.amount_zec} ZEC cancelled. The allowance is back.`,
+    success: () => `Charge of ${charge.amount_zec} ZEC cancelled. The jar can spend it again.`,
     onSuccess: () => setConfirming(false),
   });
   const cancelled = charge.status === "cancelled";
   return (
-    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm">
-      <div className="min-w-0 space-y-0.5">
-        <p className={cancelled ? "text-faint tabular line-through" : "tabular"}>
-          {charge.amount_zec} ZEC
-          {charge.memo ? <span className="wrap-anywhere text-muted"> · {charge.memo}</span> : null}
+    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
+      <div className="min-w-0 space-y-1">
+        <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <span className="font-display text-xl leading-none tabular">
+            <span className={cancelled ? "text-faint line-through" : "text-fg"}>
+              {charge.amount_zec}
+            </span>
+            <span className="ml-1 font-mono text-[0.65rem] font-normal text-faint">ZEC</span>
+          </span>
+          {charge.memo ? (
+            <span className="font-mono text-xs text-muted wrap-anywhere">{charge.memo}</span>
+          ) : null}
         </p>
-        <p className="text-faint">
+        <p className="font-mono text-[0.7rem] text-faint">
           {formatDateTime(charge.created_at)}
-          {cancelled ? " · cancelled" : null}
+          {cancelled ? " · Cancelled" : null}
         </p>
       </div>
       {!cancelled && jar.status === "open" ? (
-        <Button variant="quiet" onClick={() => setConfirming(true)}>
+        <Button variant="quiet" className="px-2.5" onClick={() => setConfirming(true)}>
           Cancel charge
         </Button>
       ) : null}
@@ -164,7 +185,7 @@ function ChargeRow({ jar, charge }: { jar: Jar; charge: JarCharge }) {
             setConfirming(false);
           }}
         >
-          <p>{charge.amount_zec} ZEC goes back to the jar's allowance.</p>
+          <p>{charge.amount_zec} ZEC goes back into the jar. The agent can spend it again.</p>
           <p>No ZEC moves. If the agent already paid someone, settle that in your wallet.</p>
         </ConfirmDialog>
       ) : null}
@@ -233,8 +254,14 @@ function JarCharges({ jar }: { jar: Jar }) {
 function KilledJarCharges({ jar }: { jar: Jar }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <details onToggle={(event) => setExpanded(event.currentTarget.open)}>
-      <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
+    <details className="group" onToggle={(event) => setExpanded(event.currentTarget.open)}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 font-mono text-[0.7rem] tracking-[0.14em] text-muted uppercase hover:text-fg [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          size={14}
+          strokeWidth={1.75}
+          className="transition-transform group-open:rotate-90"
+        />
         Charges · {jar.charge_count}
       </summary>
       {expanded ? <JarCharges jar={jar} /> : null}
@@ -242,33 +269,56 @@ function KilledJarCharges({ jar }: { jar: Jar }) {
   );
 }
 
-function SpendMeter({ jar }: { jar: Jar }) {
+/** One slat per tenth of the cap. */
+const SLATS = 10;
+
+/**
+ * The cap as a blind. Lit slats are what the agent can still spend; each charge closes it a little
+ * more from the top, and an empty jar lets no light through. Decorative: jarSummaryCopy says the
+ * same in words. The slats open one by one when the page loads.
+ */
+function CapBlind({ jar }: { jar: Jar }) {
   const cap = zecToZat(jar.cap_zec) ?? 0n;
-  const spent = zecToZat(jar.spent_zec) ?? 0n;
-  const percent = cap > 0n ? Number((spent * 1000n) / cap) / 10 : 0;
+  const left = zecToZat(jar.remaining_zec) ?? 0n;
+  // In thousandths, so a small charge still dims part of a slat.
+  const lit = cap > 0n ? Number((left * 1000n) / cap) / 1000 : 0;
+  const killed = jar.status === "killed";
   return (
-    <div aria-hidden className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
-      <div
-        className={
-          jar.status === "killed"
-            ? "h-full bg-faint"
-            : percent >= 100
-              ? "h-full bg-warn"
-              : "h-full bg-paper"
-        }
-        style={{ width: `${Math.min(100, percent)}%` }}
-      />
+    <div
+      aria-hidden
+      className={cn(
+        "grid w-20 shrink-0 content-start gap-[5px] rounded-sm border p-2 sm:w-24",
+        killed ? "border-line" : "border-line-strong/60",
+      )}
+    >
+      {Array.from({ length: SLATS }, (_, index) => {
+        // Counted from the bottom: the bottom slats stay lit longest.
+        const fromBottom = SLATS - 1 - index;
+        const fill = Math.min(1, Math.max(0, lit * SLATS - fromBottom));
+        return (
+          <span key={index} className="relative h-[5px] overflow-hidden rounded-[1px] bg-line">
+            <span
+              className={cn(
+                "slat-open absolute inset-y-0 left-0 transition-[width] duration-700 ease-curtain",
+                killed ? "bg-faint/45" : "bg-glow",
+              )}
+              style={{ width: `${fill * 100}%`, "--i": fromBottom } as CSSProperties}
+            />
+          </span>
+        );
+      })}
     </div>
   );
 }
 
 function JarCard({ jar }: { jar: Jar }) {
   const reveal = useRevealSecret();
+  const killHintId = useId();
   const [confirmKill, setConfirmKill] = useState(false);
   const agentKey = useDeskMutation({
     mutationFn: () => createApiKey({ kind: "agent", label: jar.label, jar_id: jar.id }),
     invalidate: () => [qk.apiKeys],
-    success: () => "Agent key created. Save it now; Shade shows it once.",
+    success: () => "Agent key created. Save it now. Shade shows it once.",
     onSuccess: (key) =>
       reveal({
         title: `Agent key for ${jar.label}`,
@@ -290,8 +340,8 @@ function JarCard({ jar }: { jar: Jar }) {
           <>
             In a checkout of the Shade repository,{" "}
             <code className="text-fg">npm run demo:agent -w @shade/backend -- --jar {jar.id}</code>{" "}
-            runs a sample agent (set <code className="text-fg">SHADE_API_URL</code> to{" "}
-            {window.location.origin}).
+            runs a sample agent. Set <code className="text-fg">SHADE_API_URL</code> to{" "}
+            {window.location.origin} first.
           </>,
           COPY.killNote,
         ],
@@ -306,44 +356,117 @@ function JarCard({ jar }: { jar: Jar }) {
 
   const open = jar.status === "open";
   const empty = open && (zecToZat(jar.remaining_zec) ?? 0n) === 0n;
+  const command = chargeCommand(jar.id);
+  const section = "border-t border-line px-5 py-4 sm:px-6";
   return (
-    <li className="space-y-4 rounded-md border border-line-strong bg-surface p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="font-serif text-2xl wrap-anywhere">{jar.label}</h3>
+    <li
+      className={cn(
+        "rounded-lg border",
+        open ? "border-line-strong bg-surface" : "border-dashed border-line-strong bg-transparent",
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-5 pt-5 sm:px-6">
+        <h3
+          className={cn(
+            "min-w-0 font-display text-3xl leading-none wrap-anywhere",
+            open ? "text-fg" : "text-muted",
+          )}
+        >
+          {jar.label}
+        </h3>
         <StatusText
           status={open ? { label: "Open", tone: "ok" } : { label: "Killed", tone: "muted" }}
         />
       </div>
-      <div className="space-y-2">
-        <p className="tabular">{jarSummaryCopy(jar.cap_zec, jar.spent_zec, jar.remaining_zec)}</p>
-        <SpendMeter jar={jar} />
-        {open ? null : <p className="text-sm text-muted">{COPY.jarClosed}</p>}
-        {empty ? <p className="text-sm text-warn">{COPY.jarEmpty}</p> : null}
-        <p className="text-sm text-muted">
-          {open ? COPY.killNote : `Killed ${formatDateTime(jar.killed_at ?? jar.created_at)}.`}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted">Jar id</span>
-        <code className="wrap-anywhere">{jar.id}</code>
+      <div className="flex flex-wrap items-center gap-x-2 px-5 sm:px-6">
+        <span className="font-mono text-[0.7rem] text-faint">Jar id</span>
+        <code className="text-[0.7rem] text-muted wrap-anywhere">{jar.id}</code>
         <CopyButton value={jar.id} label="Copy id" variant="quiet" className="px-2" />
       </div>
+
+      <div className="flex gap-5 px-5 pt-1 pb-5 sm:gap-7 sm:px-6">
+        <CapBlind jar={jar} />
+        <div className="min-w-0 space-y-2">
+          <p className={EYEBROW}>{open ? "Left to spend" : "Spent"}</p>
+          <p
+            className={cn(
+              "font-display text-5xl leading-none tabular wrap-anywhere",
+              open ? "text-fg" : "text-muted",
+            )}
+          >
+            {open ? jar.remaining_zec : jar.spent_zec}
+            <span className="ml-2 font-mono text-sm font-normal text-faint">ZEC</span>
+          </p>
+          <p className="text-sm text-muted tabular">
+            {jarSummaryCopy(jar.cap_zec, jar.spent_zec, jar.remaining_zec)}
+          </p>
+          {empty ? <p className="text-sm font-medium text-warn">{COPY.jarEmpty}</p> : null}
+          {open ? null : (
+            <>
+              <p className="text-sm text-muted">{COPY.jarClosed}</p>
+              <p className="font-mono text-[0.7rem] text-faint">
+                Killed {formatDateTime(jar.killed_at ?? jar.created_at)}.
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
       {open ? (
-        <div className="flex flex-wrap gap-2">
+        <div className={cn(section, "flex flex-wrap items-center gap-x-3 gap-y-2")}>
           <Button variant="ghost" onClick={() => agentKey.mutate()} disabled={agentKey.isPending}>
+            <KeyRound aria-hidden size={16} strokeWidth={1.75} />
             {agentKey.isPending ? "Creating key…" : "Agent key"}
           </Button>
-          <Button variant="danger" onClick={() => setConfirmKill(true)}>
+          <Button
+            variant="danger"
+            aria-describedby={killHintId}
+            onClick={() => setConfirmKill(true)}
+          >
             Kill
           </Button>
+          <p id={killHintId} className="min-w-0 basis-full text-xs text-faint sm:flex-1 sm:basis-0">
+            {COPY.killNote}
+          </p>
+          <ActionStatus mutation={agentKey} className="basis-full" />
         </div>
       ) : null}
-      <ActionStatus mutation={agentKey} />
-      {confirmKill ? null : <ActionStatus mutation={kill} successText="Killed." />}
-      <section className="space-y-2 border-t border-line pt-4">
+      {confirmKill ? null : (
+        <ActionStatus mutation={kill} successText="Killed." className="px-5 pb-4 sm:px-6" />
+      )}
+
+      {/* The whole command until the agent's first charge lands; then one line keeps it a copy away. */}
+      {open && jar.charge_count === 0 ? (
+        <div className={cn(section, "space-y-2")}>
+          <div className="flex flex-wrap items-center justify-between gap-x-3">
+            <p className={EYEBROW}>First charge</p>
+            <CopyButton value={command} label="Copy command" variant="quiet" className="px-2" />
+          </div>
+          <pre className="rounded-sm border border-line bg-bg p-3 text-[0.7rem] leading-relaxed whitespace-pre-wrap text-muted wrap-anywhere">
+            <code>{command}</code>
+          </pre>
+          <p className="text-xs text-faint">
+            The command reads the agent key from the{" "}
+            <code className="text-muted">SHADE_AGENT_KEY</code> variable. Press Agent key to make
+            one.
+          </p>
+        </div>
+      ) : null}
+      {open && jar.charge_count > 0 ? (
+        <div className={cn(section, "flex flex-wrap items-center justify-between gap-x-3 py-2")}>
+          <code className="min-w-0 text-[0.7rem] text-faint wrap-anywhere">
+            <span className="text-muted">POST</span> /v1/jars/{jar.id}/charge
+          </code>
+          <CopyButton value={command} label="Copy command" variant="quiet" className="px-2" />
+        </div>
+      ) : null}
+
+      <section className={cn(section, "space-y-1")}>
         {open ? (
           <>
-            <h4 className="text-sm font-medium">Charges · {jar.charge_count}</h4>
+            <h4 className="flex min-h-11 items-center font-mono text-[0.7rem] tracking-[0.14em] text-muted uppercase">
+              Charges · {jar.charge_count}
+            </h4>
             <JarCharges jar={jar} />
           </>
         ) : (
@@ -379,21 +502,23 @@ export function JarsPage() {
   const jars = useQuery({ ...jarsQuery, refetchInterval: JAR_POLL_MS });
   const network = me.data?.merchant.network ?? "testnet";
   const noAddress = me.data ? !me.data.merchant.receive_addresses[network] : false;
+  const openCount = jars.data?.filter((jar) => jar.status === "open").length ?? 0;
+  const killedCount = (jars.data?.length ?? 0) - openCount;
 
   return (
     <DeskPage
       title="Jars"
-      intro="A jar gives an AI agent a spending limit. It can spend up to the cap; the next charge fails closed."
+      intro="A jar gives an AI agent a spending cap. The agent charges the jar for each paid call. When it reaches the cap, Shade refuses the next charge."
     >
       <SplitLayout
         aside={
           <Panel title="New jar">
             {noAddress ? (
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 rounded-sm border border-warn/50 bg-warn/[0.04] p-4 text-sm">
                 <p className="text-warn">{COPY.noAddress}</p>
                 <Link
                   to="/desk/settings/address"
-                  className="inline-flex min-h-11 items-center underline underline-offset-4"
+                  className="inline-flex min-h-11 items-center font-medium text-fg underline underline-offset-4"
                 >
                   Add a {network} receive address
                 </Link>
@@ -404,6 +529,16 @@ export function JarsPage() {
           </Panel>
         }
       >
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-line-strong pb-4">
+          <h2 className="font-display text-3xl leading-none">
+            {network === "mainnet" ? "Mainnet jars" : "Testnet jars"}
+          </h2>
+          {jars.data?.length ? (
+            <p className={EYEBROW}>
+              {openCount} open · {killedCount} killed
+            </p>
+          ) : null}
+        </div>
         {jars.data && jars.isRefetchError ? <RefreshError error={jars.error} /> : null}
         {jars.data === undefined ? (
           jars.isError ? (
@@ -413,7 +548,8 @@ export function JarsPage() {
           )
         ) : jars.data.length === 0 ? (
           <EmptyState title="No jars yet.">
-            Create one, then press Agent key to give an agent its own key for that jar.
+            Create a jar, then press Agent key. The agent gets its own key, and that key can only
+            charge that jar.
           </EmptyState>
         ) : (
           <>
@@ -424,7 +560,7 @@ export function JarsPage() {
             </ul>
             {jars.data.length >= LIST_CAP ? (
               <p className="mt-4 text-sm text-muted">
-                Showing every open jar, then the newest killed ones ({LIST_CAP} in all).
+                Shade lists every open jar, then the newest killed ones, up to {LIST_CAP} jars.
               </p>
             ) : null}
           </>

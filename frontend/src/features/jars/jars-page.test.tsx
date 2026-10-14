@@ -1,6 +1,6 @@
 import type { Jar, Me } from "@shade/contract";
 import { focusManager } from "@tanstack/react-query";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { qk } from "@/api/keys";
 import { SecretProvider } from "@/features/desk/secret-provider";
@@ -140,7 +140,8 @@ describe("jars page", () => {
     expect(chargePaths()).toEqual(["/api/desk/jars/jar_1/charges?limit=25"]);
 
     fireEvent.click(screen.getByText("Charges · 2"));
-    expect(await screen.findByText(/api:search/)).toBeTruthy();
+    // Exact: the open jar's first-charge command also mentions api:search.
+    expect(await screen.findByText("api:search")).toBeTruthy();
     expect(chargePaths()).toEqual([
       "/api/desk/jars/jar_1/charges?limit=25",
       "/api/desk/jars/jar_2/charges?limit=25",
@@ -204,7 +205,8 @@ describe("jars page", () => {
     );
     fireEvent.click(await screen.findByRole("button", { name: "Agent key" }));
     expect(await screen.findByText("ag_secretTokenValue0123456789wxyz")).toBeTruthy();
-    const example = screen.getByText(/curl -X POST/);
+    const dialog = document.querySelector("dialog[open]") as HTMLElement;
+    const example = within(dialog).getByText(/curl -X POST/);
     expect(example.textContent).toBe(
       [
         `curl -X POST ${window.location.origin}/v1/jars/jar_1/charge \\`,
@@ -216,6 +218,12 @@ describe("jars page", () => {
     );
     expect(example.textContent).not.toContain("ag_secret");
     expect(screen.getByRole("button", { name: "Copy example charge" })).toBeTruthy();
+
+    // The jar card keeps the same first charge on screen, also without the key.
+    const card = screen.getByRole("heading", { name: "research-agent" }).closest("li")!;
+    expect(within(card).getByText(/curl -X POST/).textContent).toBe(example.textContent);
+    expect(card.textContent).not.toContain("ag_secret");
+    expect(within(card).getByRole("button", { name: "Copy command" })).toBeTruthy();
   });
 
   it("refetches a jar's charges only when the jar poll shows new activity", async () => {

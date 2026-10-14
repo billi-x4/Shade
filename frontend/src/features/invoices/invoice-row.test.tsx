@@ -21,7 +21,8 @@ describe("record payment", () => {
     fireEvent.click(screen.getByRole("button", { name: "Record payment" }));
     const field = screen.getByLabelText("Transaction id");
     expect(document.activeElement).toBe(field);
-    expect(screen.getByText(`“${invoice.chain_memo}”`)).toBeTruthy();
+    // The exact memo the payer's wallet wrote, for the merchant to check against their wallet.
+    expect(screen.getByText(invoice.chain_memo)).toBeTruthy();
 
     fireEvent.change(field, { target: { value: "not a txid" } });
     fireEvent.click(screen.getByRole("button", { name: "Mark paid" }));
